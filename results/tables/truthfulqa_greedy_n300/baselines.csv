@@ -1,0 +1,8 @@
+baseline,auc
+neg_mean_entropy,0.9423076923076923
+mean_logprob,0.8846153846153846
+min_logprob,0.8846153846153846
+mean_margin,0.8846153846153846
+neg_first_entropy,0.8076923076923077
+first_margin,0.7692307692307692
+BEST_PROBE,1.0

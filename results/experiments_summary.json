@@ -1,0 +1,1251 @@
+{
+  "per_dataset_layer_probes": {
+    "nq_open_greedy_n500": {
+      "best_probe": {
+        "position": "answer_mean",
+        "layer": 31,
+        "auc": 0.7301587301587302,
+        "acc": 0.6923076923076923,
+        "f1": 0.6666666666666666,
+        "logloss": 0.7269062161009295,
+        "ece": 0.18492482264740762
+      },
+      "baselines": {
+        "mean_logprob": 0.753968253968254,
+        "min_logprob": 0.8174603174603176,
+        "neg_first_entropy": 0.611111111111111,
+        "neg_mean_entropy": 0.7037037037037037,
+        "first_margin": 0.6111111111111112,
+        "mean_margin": 0.6507936507936507
+      },
+      "n": 132,
+      "n_correct": 61,
+      "n_incorrect": 71
+    },
+    "popqa_force_n500": {
+      "best_probe": {
+        "position": "answer_last",
+        "layer": 36,
+        "auc": 0.9128086419753086,
+        "acc": 0.8455284552845529,
+        "f1": 0.6885245901639344,
+        "logloss": 0.4842753019655835,
+        "ece": 0.10004167558146208
+      },
+      "baselines": {
+        "mean_logprob": 0.7476851851851851,
+        "min_logprob": 0.7280092592592592,
+        "neg_first_entropy": 0.7422839506172839,
+        "neg_mean_entropy": 0.7719907407407407,
+        "first_margin": 0.6471836419753086,
+        "mean_margin": 0.7364969135802469
+      },
+      "n": 409,
+      "n_correct": 90,
+      "n_incorrect": 319
+    },
+    "simpleqa_force_n800": {
+      "best_probe": {
+        "position": "answer_first",
+        "layer": 15,
+        "auc": 0.8202790697674418,
+        "acc": 0.8541666666666666,
+        "f1": 0.36363636363636365,
+        "logloss": 0.46538269777420543,
+        "ece": 0.11041545455625672
+      },
+      "baselines": {
+        "mean_logprob": 0.6785116279069767,
+        "min_logprob": 0.5666976744186047,
+        "neg_first_entropy": 0.7845581395348837,
+        "neg_mean_entropy": 0.7627906976744185,
+        "first_margin": 0.6557209302325582,
+        "mean_margin": 0.7441860465116279
+      },
+      "n": 800,
+      "n_correct": 83,
+      "n_incorrect": 717
+    },
+    "triviaqa_greedy_n500": {
+      "best_probe": {
+        "position": "answer_last",
+        "layer": 36,
+        "auc": 0.9289044289044288,
+        "acc": 0.8305084745762712,
+        "f1": 0.8529411764705882,
+        "logloss": 0.35847135971491273,
+        "ece": 0.14175549289927372
+      },
+      "baselines": {
+        "mean_logprob": 0.8543123543123543,
+        "min_logprob": 0.8193473193473193,
+        "neg_first_entropy": 0.7762237762237763,
+        "neg_mean_entropy": 0.8484848484848484,
+        "first_margin": 0.7400932400932401,
+        "mean_margin": 0.7762237762237763
+      },
+      "n": 197,
+      "n_correct": 109,
+      "n_incorrect": 88
+    },
+    "truthfulqa_greedy_n300": {
+      "best_probe": {
+        "position": "prompt_last",
+        "layer": 16,
+        "auc": 1.0,
+        "acc": 0.8235294117647058,
+        "f1": 0.7272727272727273,
+        "logloss": 0.3368083471354164,
+        "ece": 0.22380366100050234
+      },
+      "baselines": {
+        "mean_logprob": 0.8846153846153846,
+        "min_logprob": 0.8846153846153846,
+        "neg_first_entropy": 0.8076923076923077,
+        "neg_mean_entropy": 0.9423076923076923,
+        "first_margin": 0.7692307692307692,
+        "mean_margin": 0.8846153846153846
+      },
+      "n": 57,
+      "n_correct": 14,
+      "n_incorrect": 43
+    }
+  },
+  "per_dataset_grade_summary": {
+    "nq_open_greedy_n500": {
+      "n": 500,
+      "correct": 61,
+      "abstain": 368
+    },
+    "popqa_force_n500": {
+      "n": 500,
+      "correct": 90,
+      "abstain": 91
+    },
+    "simpleqa_force_n800": {
+      "n": 800,
+      "correct": 83,
+      "abstain": 0
+    },
+    "simpleqa_force_sampled_n200_k8": {
+      "n": 1600,
+      "correct": 145,
+      "abstain": 0
+    },
+    "triviaqa_greedy_n500": {
+      "n": 500,
+      "correct": 109,
+      "abstain": 303
+    },
+    "truthfulqa_greedy_n300": {
+      "n": 300,
+      "correct": 14,
+      "abstain": 243
+    }
+  },
+  "within_question": {
+    "n_questions": 39,
+    "n_correct": 113,
+    "n_incorrect": 199,
+    "best_qid_split": {
+      "position": "answer_mean",
+      "layer": 10,
+      "auc_qid_split": 0.7236533957845432,
+      "auc_within_q_split": 0.9334282662869349,
+      "delta": 0.20977487050239163
+    },
+    "best_within_q_split": {
+      "position": "answer_mean",
+      "layer": 35,
+      "auc_qid_split": 0.6323185011709602,
+      "auc_within_q_split": 0.9893200427198292,
+      "delta": 0.357001541548869
+    },
+    "layer_curve_qid_split": {
+      "prompt_last": [
+        0.5,
+        0.4210772833723654,
+        0.4107728337236534,
+        0.4805620608899297,
+        0.552224824355972,
+        0.4688524590163935,
+        0.5747072599531616,
+        0.5826697892271663,
+        0.6126463700234193,
+        0.6318501170960187,
+        0.638407494145199,
+        0.619672131147541,
+        0.5878220140515222,
+        0.5536299765807962,
+        0.5859484777517564,
+        0.5466042154566744,
+        0.5681498829039813,
+        0.5723653395784543,
+        0.5779859484777518,
+        0.6384074941451992,
+        0.5906323185011709,
+        0.6252927400468384,
+        0.6871194379391101,
+        0.5967213114754099,
+        0.6491803278688524,
+        0.5601873536299765,
+        0.5526932084309134,
+        0.6988290398126463,
+        0.47400468384074945,
+        0.488056206088993,
+        0.5629976580796252,
+        0.49836065573770494,
+        0.4028103044496487,
+        0.5606557377049181,
+        0.5156908665105386,
+        0.46697892271662755,
+        0.45807962529273993
+      ],
+      "answer_first": [
+        0.4592505854800937,
+        0.6058548009367681,
+        0.5627634660421547,
+        0.5421545667447307,
+        0.4648711943793911,
+        0.48079625292740047,
+        0.5065573770491804,
+        0.42740046838407497,
+        0.5519906323185011,
+        0.4779859484777518,
+        0.6344262295081968,
+        0.46159250585480094,
+        0.5276346604215456,
+        0.4985948477751756,
+        0.48969555035128803,
+        0.45878220140515225,
+        0.5206088992974238,
+        0.5079625292740046,
+        0.4915690866510538,
+        0.48688524590163934,
+        0.5215456674473067,
+        0.5088992974238876,
+        0.598360655737705,
+        0.5056206088992974,
+        0.49203747072599535,
+        0.49484777517564393,
+        0.4461358313817331,
+        0.5468384074941453,
+        0.5384074941451991,
+        0.4756440281030444,
+        0.4587822014051522,
+        0.4601873536299766,
+        0.39227166276346614,
+        0.47189695550351285,
+        0.44941451990632314,
+        0.41850117096018735,
+        0.39836065573770496
+      ],
+      "answer_last": [
+        0.35269320843091334,
+        0.5072599531615924,
+        0.4192037470725995,
+        0.6515222482435596,
+        0.5494145199063232,
+        0.44355971896955504,
+        0.477751756440281,
+        0.624824355971897,
+        0.6421545667447307,
+        0.7175644028103045,
+        0.610304449648712,
+        0.5578454332552694,
+        0.6548009367681499,
+        0.5601873536299765,
+        0.5573770491803278,
+        0.5784543325526932,
+        0.6829039812646369,
+        0.5770491803278688,
+        0.6009367681498828,
+        0.6051522248243559,
+        0.6491803278688524,
+        0.7152224824355973,
+        0.5807962529274004,
+        0.6899297423887588,
+        0.6098360655737705,
+        0.6903981264637002,
+        0.6725995316159251,
+        0.5934426229508196,
+        0.5943793911007026,
+        0.6271662763466042,
+        0.6084309133489462,
+        0.6309133489461358,
+        0.6398126463700234,
+        0.6004683840749414,
+        0.5995316159250585,
+        0.6079625292740046,
+        0.5845433255269321
+      ],
+      "answer_mean": [
+        0.3723653395784543,
+        0.33864168618266977,
+        0.44028103044496486,
+        0.46838407494145196,
+        0.5925058548009368,
+        0.5690866510538641,
+        0.42763466042154563,
+        0.6613583138173302,
+        0.6332552693208431,
+        0.6978922716627635,
+        0.7236533957845432,
+        0.7044496487119438,
+        0.5873536299765807,
+        0.5733021077283373,
+        0.5690866510538641,
+        0.6496487119437939,
+        0.677751756440281,
+        0.5484777517564403,
+        0.5597189695550351,
+        0.5536299765807963,
+        0.5339578454332553,
+        0.7058548009367682,
+        0.43934426229508194,
+        0.4515222482435597,
+        0.46370023419203743,
+        0.5920374707259953,
+        0.5199063231850117,
+        0.5428571428571429,
+        0.5222482435597189,
+        0.5939110070257612,
+        0.6435597189695551,
+        0.5156908665105386,
+        0.5231850117096019,
+        0.4056206088992974,
+        0.6398126463700234,
+        0.6323185011709602,
+        0.5653395784543326
+      ]
+    },
+    "layer_curve_within_q_split": {
+      "prompt_last": [
+        0.5,
+        0.9069063723745105,
+        0.8990744037023852,
+        0.9113563545745818,
+        0.8988964044143823,
+        0.8830544677821288,
+        0.8976504093983624,
+        0.884122463510146,
+        0.8962264150943395,
+        0.8969384122463511,
+        0.9083303666785333,
+        0.8937344250622997,
+        0.9029903880384478,
+        0.9040583837664649,
+        0.895692417230331,
+        0.9088643645425416,
+        0.8985404058383766,
+        0.8967604129583481,
+        0.9042363830544677,
+        0.9067283730865074,
+        0.9069063723745104,
+        0.9022783908864366,
+        0.9054823780704878,
+        0.9067283730865078,
+        0.9008543965824137,
+        0.9086863652545389,
+        0.9017443930224279,
+        0.8921324314702742,
+        0.9102883588465646,
+        0.9129583481666073,
+        0.9143823424706301,
+        0.9088643645425417,
+        0.9122463510145958,
+        0.9163403346386615,
+        0.9010323958704166,
+        0.9015663937344249,
+        0.9079743681025275
+      ],
+      "answer_first": [
+        0.8187967248131007,
+        0.8939124243503026,
+        0.900498398006408,
+        0.9143823424706301,
+        0.9216803132787469,
+        0.9133143467426131,
+        0.9254182983268067,
+        0.9147383410466359,
+        0.9072623709505162,
+        0.9177643289426843,
+        0.9081523673905305,
+        0.9172303310786757,
+        0.9127803488786045,
+        0.902812388750445,
+        0.9197223211107156,
+        0.906372374510502,
+        0.9131363474546103,
+        0.9188323246707013,
+        0.9172303310786757,
+        0.921502313990744,
+        0.9115343538625845,
+        0.9138483446066216,
+        0.9118903524385903,
+        0.9348522605909577,
+        0.9362762548949805,
+        0.9350302598789606,
+        0.9231043075827697,
+        0.9234603061587754,
+        0.9261302954788181,
+        0.91812032751869,
+        0.9231043075827697,
+        0.9170523317906728,
+        0.9312922748309007,
+        0.9248843004627981,
+        0.9215023139907441,
+        0.914560341758633,
+        0.9182983268066928
+      ],
+      "answer_last": [
+        0.7392310430758278,
+        0.8332146671413315,
+        0.872374510501958,
+        0.8907084371662514,
+        0.9093983624065505,
+        0.8834104663581347,
+        0.9140263438946244,
+        0.9252402990388039,
+        0.9314702741189036,
+        0.9010323958704165,
+        0.8780704877180492,
+        0.9142043431826272,
+        0.9202563189747242,
+        0.9304022783908864,
+        0.9400142399430403,
+        0.9152723389106443,
+        0.947134211463154,
+        0.9574581701673194,
+        0.950694197223211,
+        0.9428622285510858,
+        0.9419722321110716,
+        0.9526521893912425,
+        0.9417942328230688,
+        0.9530081879672481,
+        0.9471342114631541,
+        0.9569241723033107,
+        0.9686721253114987,
+        0.9585261658953365,
+        0.9588821644713421,
+        0.9364542541829833,
+        0.9234603061587754,
+        0.9209683161267356,
+        0.9458882164471343,
+        0.9466002135991456,
+        0.9377002491990032,
+        0.932182271270915,
+        0.9474902100391598
+      ],
+      "answer_mean": [
+        0.924439302242791,
+        0.9182983268066927,
+        0.9400142399430401,
+        0.9412602349590602,
+        0.9499822000711997,
+        0.9318262726949093,
+        0.9366322534709861,
+        0.9476682093271628,
+        0.953186187255251,
+        0.9540761836952653,
+        0.9334282662869349,
+        0.9517621929512282,
+        0.9617301530793877,
+        0.968316126735493,
+        0.9722321110715557,
+        0.9814880740477039,
+        0.9795300818796725,
+        0.9791740833036668,
+        0.9745461018155926,
+        0.9688501245995016,
+        0.9747241011035955,
+        0.9686721253114987,
+        0.9804200783196867,
+        0.983624065503738,
+        0.9798860804556782,
+        0.9743681025275899,
+        0.9727661089355643,
+        0.9667141331434675,
+        0.9718761124955501,
+        0.9663581345674618,
+        0.9619081523673906,
+        0.966002135991456,
+        0.9661801352794589,
+        0.970808116767533,
+        0.9818440726237095,
+        0.9893200427198292,
+        0.9861160555357779
+      ]
+    }
+  },
+  "transfer": {
+    "position": "answer_last",
+    "layer": 23,
+    "datasets": [
+      "simpleqa",
+      "triviaqa",
+      "nq_open",
+      "popqa",
+      "truthfulqa"
+    ],
+    "auc_matrix": [
+      [
+        0.7853023255813953,
+        0.5355504587155964,
+        0.6398060494112214,
+        0.7102055033089516,
+        0.7109634551495017
+      ],
+      [
+        0.7071801851758498,
+        0.8776223776223776,
+        0.6301085199722928,
+        0.641692789968652,
+        0.6777408637873754
+      ],
+      [
+        0.6851506444186788,
+        0.749791492910759,
+        0.6825396825396826,
+        0.6047718564959944,
+        0.6395348837209303
+      ],
+      [
+        0.5628203189326342,
+        0.5353419516263553,
+        0.5601477718771647,
+        0.8557098765432098,
+        0.49667774086378735
+      ],
+      [
+        0.5636941069718203,
+        0.6886989157631359,
+        0.5873932117293927,
+        0.6204806687565309,
+        0.9615384615384616
+      ]
+    ],
+    "logprob_matrix": [
+      [
+        0.6785116279069767,
+        0.811092577147623,
+        0.7056107134610945,
+        0.7239637756879136,
+        0.712624584717608
+      ],
+      [
+        0.7114819109072273,
+        0.8543123543123543,
+        0.7056107134610945,
+        0.7239637756879136,
+        0.712624584717608
+      ],
+      [
+        0.7114819109072273,
+        0.811092577147623,
+        0.753968253968254,
+        0.7239637756879136,
+        0.712624584717608
+      ],
+      [
+        0.7114819109072273,
+        0.811092577147623,
+        0.7056107134610945,
+        0.7476851851851851,
+        0.712624584717608
+      ],
+      [
+        0.7114819109072273,
+        0.811092577147623,
+        0.7056107134610945,
+        0.7239637756879136,
+        0.8846153846153846
+      ]
+    ],
+    "n_matrix": [
+      [
+        240,
+        197,
+        132,
+        409,
+        57
+      ],
+      [
+        800,
+        59,
+        132,
+        409,
+        57
+      ],
+      [
+        800,
+        197,
+        39,
+        409,
+        57
+      ],
+      [
+        800,
+        197,
+        132,
+        123,
+        57
+      ],
+      [
+        800,
+        197,
+        132,
+        409,
+        17
+      ]
+    ]
+  },
+  "verbal_compare": {
+    "simpleqa": {
+      "best_probe_layer": 23,
+      "aucs": {
+        "probe@answer_last_L23": 0.7853023255813953,
+        "mean_logprob": 0.6785116279069767,
+        "neg_mean_entropy": 0.7627906976744185,
+        "mean_margin": 0.7441860465116279,
+        "verbal_conf": 0.601767441860465
+      },
+      "n_test": 240
+    },
+    "triviaqa": {
+      "best_probe_layer": 36,
+      "aucs": {
+        "probe@answer_last_L36": 0.9289044289044288,
+        "mean_logprob": 0.8543123543123543,
+        "neg_mean_entropy": 0.8484848484848484,
+        "mean_margin": 0.7762237762237763,
+        "verbal_conf": 0.7785547785547785
+      },
+      "n_test": 59
+    },
+    "nq_open": {
+      "best_probe_layer": 24,
+      "aucs": {
+        "probe@answer_last_L24": 0.708994708994709,
+        "mean_logprob": 0.753968253968254,
+        "neg_mean_entropy": 0.7037037037037037,
+        "mean_margin": 0.6507936507936507,
+        "verbal_conf": 0.4920634920634921
+      },
+      "n_test": 39
+    },
+    "popqa": {
+      "best_probe_layer": 36,
+      "aucs": {
+        "probe@answer_last_L36": 0.9128086419753086,
+        "mean_logprob": 0.7476851851851851,
+        "neg_mean_entropy": 0.7719907407407407,
+        "mean_margin": 0.7364969135802469,
+        "verbal_conf": 0.6873070987654322
+      },
+      "n_test": 123
+    }
+  },
+  "qualitative_dissociation": [
+    {
+      "dataset": "simpleqa",
+      "question": "In whose honor was the Leipzig 1877 tournament organized?",
+      "model_answer": "Bismarck",
+      "gold": [
+        "Adolf Anderssen"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0005649429244690841,
+      "mean_logprob": -0.3719188173155999,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What were the month and year when Obama told Christianity Today, \"I am a Christian, and I am a devout Christian. I believe in the redemptive death and resurrection of Jesus Christ\"?",
+      "model_answer": "February 2011",
+      "gold": [
+        "January 2008"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.035490823651435494,
+      "mean_logprob": -0.3543712493951716,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "How many fouls did Inter commit in the Champions League final match between Bayern and Inter on May 23, 2010?",
+      "model_answer": "4",
+      "gold": [
+        "13"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0009324601767554505,
+      "mean_logprob": -0.21125460020266473,
+      "verbal_conf": 40.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who requested the Federal Aviation Administration (FAA) implement a 900 sq mi (2,300 km2) temporary flight restriction zone over the operations areas of the Deepwater Horizon?",
+      "model_answer": "Barack Obama",
+      "gold": [
+        "The Coast Guard"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.402305145869673e-05,
+      "mean_logprob": -0.15124937951441098,
+      "verbal_conf": 0.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What position was John Gilbert Layton appointed to in Quebec from 1969 until 1970?",
+      "model_answer": "Minister of Justice",
+      "gold": [
+        "Quebec Youth Parliament prime minister"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.9962690845662685e-05,
+      "mean_logprob": -0.1828358140453929,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who won the Gerard P. Kuiper Prize in 2001?",
+      "model_answer": "Robert H. Brown",
+      "gold": [
+        "Bruce W. Hapke"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 6.728433900257389e-06,
+      "mean_logprob": -0.5062036894727499,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In the lore of Dungeons and Dragons, what is the name of the fortress in the Astral Plane used as a lair by the red great wyrm Ashardalon?",
+      "model_answer": "Aeons End",
+      "gold": [
+        "Bastion of Unborn Souls"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 1.7683546174695018e-06,
+      "mean_logprob": -1.061787756718695,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "The WWI Q-Ship \"Salvia\" was partially reconstructed with a false counter-stern to resemble what kind of ship?",
+      "model_answer": "Sankka (or possibly Skafanda) Greek fishing boat",
+      "gold": [
+        "tramp"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 3.74156642836636e-05,
+      "mean_logprob": -0.8733739756114248,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Which district in Kashmir was originally known as Panwangam?",
+      "model_answer": "Baramulla",
+      "gold": [
+        "Pulwama"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 9.063690584177212e-05,
+      "mean_logprob": -0.3868778187315911,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In 1810, François Aimé Louis Dumoulin published a collection of how many engravings themed on the journey of \"Robinson Crusoe\"?",
+      "model_answer": "240",
+      "gold": [
+        "150"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.001005042881618024,
+      "mean_logprob": -0.671091865748167,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which season and episode of Archer does Sterling go into a rampage? Give me the season, number, and title of the episode.",
+      "model_answer": "Season 5, Episode 18, \"Rampage\"",
+      "gold": [
+        "Season 2, Episode 9 \"Placebo Effect\""
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.009924122134650168,
+      "mean_logprob": -0.3433361485677381,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What are the first and last names of the scientist who collaborated with Vincent Joseph Schaefer to issue the U.S. patent for \"Method and Apparatus for Producing Aerosols\" in 1943?",
+      "model_answer": "Frederick M. Hartman",
+      "gold": [
+        "Langmuir Irving"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 6.308248085170997e-06,
+      "mean_logprob": -0.6673070637043566,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who was the Swedish footballer who spent his entire career as a winger for the club GAIS in the Swedish Allsvenskan from 1949 to 1960 and passed away on February 26, 2017?",
+      "model_answer": "Göran Olsson",
+      "gold": [
+        "Frank Jacobsson"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00015069474026311363,
+      "mean_logprob": -0.6429087171369853,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which district of Uttarakhand was Ila Pant (an Indian politician) born?",
+      "model_answer": "Pauri Garhwal",
+      "gold": [
+        "Nainital district"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.07726608085963328,
+      "mean_logprob": -0.15208228686658135,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "At which university was the mechanical engineer Gang Chen an assistant professor from 1993 to 1997?",
+      "model_answer": "Massachusetts Institute of Technology",
+      "gold": [
+        "Duke University"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00015818441883516887,
+      "mean_logprob": -0.07128042748469927,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "How many medals did Ken Skupski win representing England at the 2010 Commonwealth Games in Delhi?",
+      "model_answer": "0",
+      "gold": [
+        "two medals."
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0031255805956081624,
+      "mean_logprob": -0.17761414172127843,
+      "verbal_conf": 0.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Which Venetian artist painted the portrait of Maria Theresia Walburga Amalia Christina in 1730?",
+      "model_answer": "Tiepolo",
+      "gold": [
+        "Rosalba Carriera"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 1.4687280072259798e-06,
+      "mean_logprob": -0.09526959994109348,
+      "verbal_conf": 0.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What is the forest cover area of Tamil Nadu in square kilometers, according to the India State of Forest Report 2019?",
+      "model_answer": "34276",
+      "gold": [
+        "26,364.02"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.451762931952367e-05,
+      "mean_logprob": -0.9620652366429567,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On June 24, 2018, how many more votes did the winning candidate get in total than Muharrem İnce?",
+      "model_answer": "39,785",
+      "gold": [
+        "10,990,502"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 5.494825931428931e-09,
+      "mean_logprob": -0.7159441500636083,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What disease was Elizabeth Esteve-Coll diagnosed with that forced her to step down as Vice-Chancellor of the University of East Anglia?",
+      "model_answer": "Amyotrophic Lateral Sclerosis (ALS)",
+      "gold": [
+        "multiple sclerosis diagnosis"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0003408423165258102,
+      "mean_logprob": -0.06022947887950894,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "How many houses did the village of Bure Nangal in Batala have according to the 2011 Census of India?",
+      "model_answer": "459",
+      "gold": [
+        "211"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.027356694709213e-06,
+      "mean_logprob": -1.1681394344195724,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What was the original surname of conductor David Randolph?",
+      "model_answer": "Randolph",
+      "gold": [
+        "Rosenberg."
+      ],
+      "is_correct": false,
+      "probe_p_correct": 1.9568104534458248e-05,
+      "mean_logprob": -0.017561842532207567,
+      "verbal_conf": 0.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What is the ChemSpider ID of Axitinib, a small molecule tyrosine kinase inhibitor developed by Pfizer?",
+      "model_answer": "13589",
+      "gold": [
+        "4953153"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.09817103485942709,
+      "mean_logprob": -1.5109126369158428,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What is the name of the district with the Regional Transport Office (RTO) code SK-06 in Sikkim, India?",
+      "model_answer": "Namchi",
+      "gold": [
+        "Soreng"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00237584027795295,
+      "mean_logprob": -0.6991661392773191,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who was the architect of Leamington who designed the church of St. John the Baptist that was built between 1877 and 1878?",
+      "model_answer": "Frederick Thomas Stevens",
+      "gold": [
+        "John Cundall"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 1.1954987205423834e-06,
+      "mean_logprob": -0.7562405267672148,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What was the name of the director of the Clayman Institute for Gender Research from 1997 to 2001?",
+      "model_answer": "Robert P. Schoor",
+      "gold": [
+        "Laura Carstensen"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 4.388915494994184e-05,
+      "mean_logprob": -1.2551318233211834,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which two fields of study did computer scientist Nancy Amato receive two bachelor's degrees from Stanford University in 1986?",
+      "model_answer": "Computer Science and Electrical Engineering",
+      "gold": [
+        "Mathematical Sciences and Economics"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 5.664388121699875e-05,
+      "mean_logprob": -0.13803659603051224,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who was the first person to be an American diplomatic minister to Romania and Serbia?",
+      "model_answer": "Benjamin Franklin",
+      "gold": [
+        "Eugene Schuyler"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.022202489415232316,
+      "mean_logprob": -0.1856694913294632,
+      "verbal_conf": 80.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What day, month, and year did Australian politician John Joseph Hall die?",
+      "model_answer": "19 June 2007",
+      "gold": [
+        "30 June 1949"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.007539291970961273,
+      "mean_logprob": -0.6868263210393101,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Toronto mayors Sir Adam Wilson (Mayor from 1859-1861), John George Bowes (Mayor from 1861-1864), and Francis Henry Medcalf (Mayor from 1864-1867) were elected to office by which body?",
+      "model_answer": "Toronto City Council",
+      "gold": [
+        "The public"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.16911834734262796,
+      "mean_logprob": -0.1187972054394777,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who was the first cardiologist in Kashmir?",
+      "model_answer": "Not specified",
+      "gold": [
+        "Dr Upendra Kaul"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00012279381552380466,
+      "mean_logprob": -0.13017195339004198,
+      "verbal_conf": 0.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What is the name of Jupiter’s third-largest moon?",
+      "model_answer": "Ganymede",
+      "gold": [
+        "Io"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.03345976867862728,
+      "mean_logprob": -0.18649668567013578,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On what date did President Kagame receive an honorary degree in Ethiopia?",
+      "model_answer": "2018-07-05",
+      "gold": [
+        "JULY 2, 2016"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0026040186391266523,
+      "mean_logprob": -0.7355037192292829,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On what day, month, and year did the 2nd ASEM Transport Ministers' Meeting begin?",
+      "model_answer": "15-16 December 2013",
+      "gold": [
+        "24 October 2011"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00012001830322690725,
+      "mean_logprob": -0.588859685917356,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What was the name of the high school that the 5th State President of South Africa, serving from 1979 until 1984, attended?",
+      "model_answer": "Heidelberg High School",
+      "gold": [
+        "Jan van Riebeeck High School"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.07445105688583485,
+      "mean_logprob": -0.35266088897478765,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Specify the exact day, month, and year Capcom reported that its servers were affected by ransomware, scrambling its data, and the threat actors, the Ragnar Locker hacker group, had allegedly stolen 1TB of sensitive corporate data and were blackmailing Capcom to pay them to remove the ransomware.",
+      "model_answer": "June 24, 2021",
+      "gold": [
+        "2 Nov 2020"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.17957922216668676,
+      "mean_logprob": -0.42994359207852995,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On what day, month, and year was the first unplanned flight of the General Dynamics F-16 Fighting Falcon?",
+      "model_answer": "November 27, 1974",
+      "gold": [
+        "January 20, 1974"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.10694795290802406,
+      "mean_logprob": -0.2497910406551779,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What are the four keywords of the paper \"New Avenues and Challenges in Semantic Map Research\"?",
+      "model_answer": "New, Avenues, Challenges, Semantic, Map, Research",
+      "gold": [
+        "semantic maps, inference, graph, emotions"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0021094463748997576,
+      "mean_logprob": -0.027340244687960737,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On which day, month, and year was Dolmar-Salzbrücke formed as a Verwaltungsgemeinschaft?",
+      "model_answer": "1 October 1972",
+      "gold": [
+        "1 January 2012"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.004031827878096906,
+      "mean_logprob": -0.37187419660767773,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What day, month, and year did Emperor Xizong of Jin become the emperor of the Jin dynasty?",
+      "model_answer": "March 16, 936 AD",
+      "gold": [
+        "10 February, 1135"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0013626023275480825,
+      "mean_logprob": -0.35068983112622926,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which year was *Racosperma drummondii* transferred back to the genus *Acacia*?",
+      "model_answer": "2014",
+      "gold": [
+        "2006"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.0018941187546605647,
+      "mean_logprob": -0.26109715159109326,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Which peninsular plateau of India extends 900 km, with many peaks rising above 1,000 m?",
+      "model_answer": "Deccan Plateau",
+      "gold": [
+        "Satpura Range"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.456534155471632e-05,
+      "mean_logprob": -0.19173886265278384,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who was awarded the Rumelhart Prize in 2014?",
+      "model_answer": "Yoshua Bengio",
+      "gold": [
+        "Ray Jackendoff"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.002182762149297531,
+      "mean_logprob": -0.1782426019920725,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who sketched the \"Taddei Tondo\" following its arrival at the Royal Academy and published a letter in the Athenaeum of 3 July 1830 praising how it was lit?",
+      "model_answer": "J.M.W. Turner",
+      "gold": [
+        "John Constable"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.00023906862721044737,
+      "mean_logprob": -0.19900271895524688,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which year was the town of Babanango, in the KwaZulu-Natal province of South Africa, founded?",
+      "model_answer": "1849",
+      "gold": [
+        "1904"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.006747289914776025,
+      "mean_logprob": -0.2376656043867115,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "What is the name (first and last) of the 11th President of the University of Northern Iowa?",
+      "model_answer": "John L. Hansen",
+      "gold": [
+        "Mark A. Nook"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.022995332392227796,
+      "mean_logprob": -1.280916760629043,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "As of the 2020 Census, what was the population of Wheatland, Iowa?",
+      "model_answer": "1349",
+      "gold": [
+        "775"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 5.867215663102309e-05,
+      "mean_logprob": -1.1648679494857788,
+      "verbal_conf": 85.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "In which town was the South African 80s child pop star Ricardo Groenewald born?",
+      "model_answer": "Klerksdorp",
+      "gold": [
+        "Humansdorp"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 2.404453315146173e-05,
+      "mean_logprob": -0.4557207821344491,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "On what date (day/month/year) was Makhdum Khusro Bakhtyar (Pakistani politician) inducted into the Federal Cabinet of Prime Minister Shaukat Aziz?",
+      "model_answer": "12/03/2005",
+      "gold": [
+        "4 September 2004"
+      ],
+      "is_correct": false,
+      "probe_p_correct": 0.03813649823414193,
+      "mean_logprob": -0.40939853208074467,
+      "verbal_conf": 100.0
+    },
+    {
+      "dataset": "simpleqa",
+      "question": "Who did Mike Bickle endorse in the 2016 presidential race?",
+      "model_answer": "Hillary Clinton",
+      "gold": [
+        "Ted Cruz."
+      ],
+      "is_correct": false,
+      "probe_p_correct": 1.0530148935437138e-05,
+      "mean_logprob": -0.03263461746973917,
+      "verbal_conf": 50.0
+    }
+  ]
+}
