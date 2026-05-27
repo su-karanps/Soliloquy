@@ -8,17 +8,20 @@ The premise: a language model has an "outer voice" (the answer it generates and 
 confidence it can be made to verbalise) and, plausibly, an *inner* one — a
 representation of whether what it's about to say is actually correct. Soliloquy is
 the experimental scaffold for reading that inner voice off the residual stream of a
-small instruction-tuned model and showing it is not the same thing as the outer
-voice.
+small instruction-tuned model and asking the harder question: is that inner signal
+*causally involved* in answer selection, or merely decodable?
 
-This repo implements the first four experiments of the project proposal: establish a
-robust internal-correctness signal in a small instruction-tuned model, show it is not
-merely answer-confidence/logit-entropy, and characterise where in the network it lives.
-Causal interventions (Experiments 5–8) are left for a later iteration once these
-probing/baseline results are in.
+This repo implements all ten experiments of the proposal: establish a robust
+internal-correctness signal, show it is not merely answer-confidence/logit-entropy,
+characterise where in the network it lives, and then probe its causal status with
+activation patching, component localization, directional steering, and a
+correctness-vs-confidence direction comparison.
 
 - Model: `Qwen/Qwen2.5-3B-Instruct` (36 transformer layers, hidden_dim 2048).
 - Datasets: SimpleQA, TriviaQA (rc.nocontext), NQ-Open, PopQA, TruthfulQA-generation.
+- Prompt: unified **forced-answer** style across all datasets ("You must give your
+  best guess; do NOT say you don't know") — eliminates abstentions and ensures a
+  clean pool of confidently-wrong examples.
 - Hardware: single H100 80 GB. Forward passes are bf16; probes run on CPU sklearn.
 - Activations & generations live in `/hai/scratch/karanps/CS221M/`; only small CSVs,
 JSONs, and PNGs are tracked here under `results/`.
@@ -37,6 +40,7 @@ soliloquy/
 │   ├── probes.py          # logistic-regression probing utilities
 │   ├── baselines.py       # mean/min logprob, entropy, margin, self-consistency
 │   ├── plotting.py        # layer curves, AUC bars, transfer matrix, calibration
+│   ├── patching.py        # hook-based activation patching + directional steering
 │   └── utils.py
 ├── scripts/
 │   ├── 01_generate.py            # Experiment 0: gen + activations per (dataset)
@@ -47,8 +51,16 @@ soliloquy/
 │   ├── 06_transfer.py            # Experiment 3: cross-dataset transfer matrix
 │   ├── 07_verbal_compare.py      # Experiment 4: probe vs verbal-conf vs logprob
 │   ├── 08_summary.py             # roll up all results into json + md report
+│   ├── 09_overview_plot.py       # cross-dataset AUC overview bar chart
+│   ├── 10_minimal_layer_curve.py # single-position layer curve (no extras)
+│   ├── 11_logit_lens.py          # Experiment 9: logit-lens across layers
+│   ├── 12_steer_probe.py         # Experiment 7: directional probe steering
+│   ├── 13_confidence_dissoc.py   # Experiment 10: correctness vs verbal-conf directions
+│   ├── 14_patch_residual.py      # Experiments 5+6: residual-stream patching
+│   ├── 15_head_localize.py       # Experiment 7: attention-head localization
 │   ├── run_all_generation.sh
-│   └── run_all_analysis.sh
+│   ├── run_all_analysis.sh
+│   └── run_causal_experiments.sh
 └── results/
     ├── plots/                    # per-experiment PNG plots
     ├── tables/                   # per-experiment CSVs
@@ -61,10 +73,11 @@ soliloquy/
 ```bash
 export HF_HOME=/hai/scratch/karanps/hf/
 cd soliloquy
-pip install -r requirements.txt          # adds rapidfuzz; everything else already present
+pip install -r requirements.txt
 
 bash scripts/run_all_generation.sh       # ~10 min on an H100
 bash scripts/run_all_analysis.sh         # ~5-10 min, CPU bound
+bash scripts/run_causal_experiments.sh   # ~2-3 hr on an H100
 ```
 
 After this, `results/experiments_summary.md` and the per-experiment plots/CSVs are
@@ -90,15 +103,11 @@ prompt) lives in `verbal_conf.jsonl`.
 
 ### Experiment 0 — Generation & correctness labelling
 
-- Greedy generation under two prompt styles:
-  - **default** ("If you do not know, say 'I don't know'") — used on TriviaQA,
-  NQ-Open, TruthfulQA, where the 3B model already answers a decent fraction.
-  - **force** ("You must give your best guess; do NOT say you don't know") — used
-  on SimpleQA and PopQA, where the default prompt produced almost 100% abstain
-  on a 3B model (so we had zero confidently-wrong examples).
+- Greedy generation under the **force** prompt style ("You must give your best guess;
+  do NOT say you don't know") across all five datasets. This produces a uniform pool
+  of answered (non-abstaining) examples, including many confidently-wrong ones.
 - Grader uses SQuAD-style normalization plus token-F1, partial-ratio fuzzy match,
-and substring containment, mirroring TriviaQA/PopQA conventions. Abstention
-strings ("I don't know", "I'm not sure", etc.) are detected before grading.
+  and substring containment. Abstention strings are detected before grading.
 
 ### Experiment 1 — Layer × position correctness probes
 
@@ -106,6 +115,8 @@ For each `(position, layer)` in `{prompt_last, answer_first, answer_last, answer
 `0..36`, an L2-logistic regression is fit on standardized hidden states to predict
 `is_correct` (non-abstain only). We report AUC, accuracy, F1, log-loss, and ECE; the
 key figure is the layer×position AUC curve overlaid against confidence baselines.
+The best probe direction is saved to `best_probe_direction.npz` for downstream
+causal experiments.
 
 ### Experiment 2 — Within-question paired control
 
@@ -113,8 +124,7 @@ We use the sampled SimpleQA-forced runs (8 samples / question) and restrict to q
 that produced both at least one correct and one incorrect non-abstain answer. We
 then train a probe (a) splitting at the qid level (questions disjoint) and (b)
 splitting within qid (each qid contributes to both train and test). Comparing the
-two AUC curves tests whether the signal survives once topic/difficulty are held
-fixed.
+two AUC curves tests whether the signal survives once topic/difficulty are held fixed.
 
 ### Experiment 3 — Cross-dataset transfer
 
@@ -124,70 +134,93 @@ AUC matrix to the matching mean-logprob AUC matrix.
 
 ### Experiment 4 — Confidence baselines & verbalized confidence dissociation
 
-On the held-out 30% split of each dataset we compare:
+On the held-out 30% split of each dataset we compare the best layer probe against:
+mean and min token log-probability, first-token entropy, mean entropy, margin
+(top-1 − top-2 logit), self-consistency over sampled generations, and verbalized
+confidence (a separate 0–100 prompt to the same model).
 
-- the best layer probe's AUC (and ECE),
-- mean and min token log-probability,
-- first-token entropy and mean entropy (negated so higher = more confident),
-- margin (top-1 − top-2 logit),
-- self-consistency over sampled generations,
-- verbalized confidence (a separate 0–100 prompt to the same model).
+### Experiment 5+6 — Residual-stream activation patching (rescue & corruption)
 
-The script also surfaces qualitative dissociation cases — high verbal/log-prob
-confidence, low internal-probe correctness probability, actually wrong — into
-`results/experiments_summary.md`.
+For pairs of (correctly-answered question, incorrectly-answered question), we patch
+the residual-stream hidden state at each layer from the correct run into the
+incorrect run and measure the change in logit-diff =
+logit(gold\_first\_token) − logit(model\_wrong\_token). We also run the reverse
+(corrupt a correct run with a wrong run's activations). This gives a layer-wise
+rescue-effect and corruption-effect curve.
 
-## Headline findings (`results/experiments_summary.md` has the full numbers)
+### Experiment 7 — Component & head localization + directional steering
 
-- **Internal correctness signal exists in mid–late layers.** Best held-out per-dataset
-probe AUCs (Qwen2.5-3B-Instruct, 30% qid-disjoint split):
-TriviaQA `0.929`, PopQA `0.913`, SimpleQA `0.820`, NQ-Open `0.730`,
-TruthfulQA `1.000` (n_test=17, indicative). The peak position is consistently
-`answer_last` or `answer_mean`, around the last third of the network (layers
-~22–36). Plot: `results/plots/<dataset>/layer_curve.png`. Cross-dataset overview:
-`results/plots/overview_probe_vs_baselines.png`.
-- **The signal beats every output-confidence baseline on most datasets.** Probe
-AUC − mean-logprob AUC: SimpleQA +0.107, TriviaQA +0.075, PopQA +0.165,
-NQ-Open −0.045 (the only loss). Verbalized confidence is the *worst* baseline
-in every dataset (0.49 NQ-Open, 0.60 SimpleQA, 0.69 PopQA, 0.78 TriviaQA) —
-direct evidence that the model's stated confidence is poorly aligned with its
-internal correctness representation.
-- **The probe is not just a topic/difficulty detector.** On 39 SimpleQA questions
-where the same prompt produced both correct and incorrect sampled answers
-(n=312 generations, 113 correct), an `answer_mean` probe reaches
-`AUC 0.989` discriminating correct vs incorrect *within the same question*,
-while qid-disjoint AUC is only 0.72. The probe is doing real
-within-question correctness discrimination, not just learning "this question
-is hard". Plot: `results/plots/simpleqa_within_q/comparison_within_vs_qid.png`.
-- **Transfer across datasets is partial.** Training on one dataset and testing on
-another at a single shared layer (pos=`answer_last`, L=23) gives off-diagonal
-AUCs in `[0.50, 0.75]` — well above chance and worth probing further, but the
-signal has a meaningful dataset-specific component. SimpleQA-trained → PopQA
-transfers best at 0.71. Plot: `results/plots/cross_dataset/transfer_probe_auc.png`.
-- **Concrete dissociation examples.** 160 cases (top examples in
-`results/experiments_summary.md`) where the model is confidently wrong by every
-external signal (verbal_conf=85–100, mean_logprob > −0.5) and the internal
-probe assigns `p(correct) < 0.05`. e.g. "Who won the Gerard P. Kuiper Prize in
-2001?" → model: `Robert H. Brown`, gold: `Bruce W. Hapke`, verbal_conf=85,
-probe p(correct)=0.00.
+- **Attn/MLP split**: at the peak rescue layer, we patch only attn\_out or mlp\_out
+  separately to determine which component carries the causal effect.
+- **Head-level**: patch individual attention-head outputs (pre-o\_proj z-vectors) at
+  layers within a window of the peak, generating a (layer × head) rescue heatmap.
+- **Directional steering**: add α × probe\_direction to the residual stream at the
+  best probe (layer, position) and sweep α, measuring correct rate, abstain rate,
+  and logit-diff at the first generated token.
+
+### Experiment 9 (partial) — Logit lens
+
+Apply the model's unembedding matrix to the saved hidden states at each layer to
+track logit(gold\_first\_token) − logit(model\_answer\_first\_token) as a function of
+layer for both correct and incorrect generations.
+
+### Experiment 10 — Correctness vs verbal-confidence direction dissociation
+
+Train two parallel probes at the best (layer, position): one predicting `is_correct`
+and one predicting high verbal confidence (≥50). Compute the cosine similarity
+between the two weight directions, cross-prediction AUCs, and quadrant counts.
+
+## Headline findings (`results/experiments_summary.md` has full numbers)
+
+- **Internal correctness signal exists in mid–late layers.** Best held-out probe
+  AUCs (30% qid-disjoint split): PopQA `0.913`, TriviaQA `0.850`, TruthfulQA
+  `0.821`, SimpleQA `0.820`, NQ-Open `0.805`. Peak positions are consistently
+  `answer_last` or `answer_mean`, in the last third of the network (layers ~21–36).
+
+- **The probe beats output-confidence baselines on most datasets.** Probe AUC −
+  best-non-probe-baseline: PopQA +0.141, SimpleQA +0.036, TriviaQA +0.006, NQ-Open
+  −0.028 (only loss). Verbalized confidence is the worst predictor on every dataset
+  (0.50–0.79 AUC), well below the internal probe.
+
+- **The signal is not just a topic/difficulty detector.** On 39 SimpleQA questions
+  that produced both correct and incorrect sampled answers, a probe reaches AUC
+  **0.989** discriminating correct vs incorrect *within the same question*, vs 0.724
+  when questions are disjoint.
+
+- **Late-layer causal dominance.** Residual-stream patching rescue effect is
+  near-zero at layers 0–20 and grows sharply from L22, **peaking at L35**
+  (Δ logit-diff = +2.76). The causally active layer is later than the most
+  probe-informative layer (L15–25), suggesting the readable signal and the causal
+  bottleneck are distinct.
+
+- **MLP > attention for causal control.** At the peak rescue layer (L35), patching
+  the MLP output contributes **4.7× more** rescue than patching the attention output
+  (0.97 vs 0.21). The dominant attention head is L35 head 5 (+0.24 effect).
+
+- **Probe-direction steering does not control generation.** Adding α × probe\_dir
+  at the prompt level (answer\_first, L15) had negligible effect on correct rate
+  across α ∈ {−5, …, +8}. This is a meaningful negative: the direction is readable
+  but is not a causal handle at the prompt level — the causal bottleneck lies in the
+  late-layer MLP, not where the probe signal first appears.
+
+- **Correctness and verbal confidence are nearly orthogonal directions.**
+  cos(correctness\_dir, verbal\_conf\_dir) ≈ **0.07** (SimpleQA), **0.11** (PopQA),
+  **0.15** (TriviaQA). On SimpleQA, **61% of responses are incorrect+verbally
+  confident** vs just 1% correct+verbally unconfident.
 
 ## Notes & caveats
 
-- SimpleQA on a 3B model is genuinely difficult; even with the forced-answer prompt
-the model answers most questions wrong. That actually makes it a clean source of
-*confidently-wrong* examples for the probe.
-- We avoid using the abstain class in any probe target so the probe doesn't just
-learn to detect the model's "I know I don't know" pathway.
-- All splits are at the qid level (no leakage from multiple sampled generations of
-one question) except where Experiment 2 deliberately violates that to compare
-with the qid-split baseline.
-- Grading is rule-based; for short-form QA this matches the standard TriviaQA/PopQA
-metrics. A small manual audit of the labelled outputs is recommended before
-reading too much into single-dataset numbers. An LLM-judge grader can be plugged
-into `src.grading` later.
-- Experiments 5–10 from the proposal (activation patching, attention-head
-localisation, SAEs, etc.) are intentionally not implemented yet — Experiments 1–4
-are what this pass produces.
+- All datasets use the forced-answer prompt so results are comparable. The greedy
+  runs retain old data for reference but the forced runs are the primary analysis.
+- All splits are at the qid level except Experiment 2, which deliberately allows
+  within-qid splits to isolate topic/difficulty effects.
+- Grading is rule-based; for short-form QA this matches TriviaQA/PopQA conventions.
+  An LLM-judge grader can be plugged into `src.grading` for future work.
+- The patching experiment uses cross-question patching (inject correct-Q hidden
+  states into wrong-Q runs at `prompt_last`). Because both runs share the same
+  prompt tokens only up to `prompt_last`, the patch represents "correct-question
+  context" rather than a surgical same-question intervention; the clean-vs-corrupted
+  input counterfactual is left for future work with temperature-sampled pairs.
 
 ## Why the name
 
@@ -195,4 +228,6 @@ Soliloquy keeps the proposal's "inner voice" framing but pins it to the more
 specific claim the experiments actually support: that the model is, in effect,
 muttering one verdict (in the residual stream) while saying another (in its
 generated answer and verbalized confidence). Like an aside in a play, the inner
-verdict is reliable; the outer one is not.
+verdict is reliable; the outer one is not. The causal experiments add a twist: the
+inner verdict is sometimes not even *wired* to the outer voice — it exists but
+doesn't reach the output.

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler  # noqa: F401 (also used in probe direction save)
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
@@ -210,9 +210,12 @@ def main():
         out_path=plots_dir / "baselines_bar.png",
     )
 
-    # Calibration of best probe (need its predictions again)
+    # Calibration of best probe (need its predictions again) + save probe direction
     Xtr = feats[best["position"]][train_idx, best["layer"], :]
     Xte = feats[best["position"]][test_idx, best["layer"], :]
+    # Fit scaler on train so we can reproduce the exact direction used
+    sc = StandardScaler()
+    Xtr_s = sc.fit_transform(Xtr)
     res_best = train_probe(Xtr, y[train_idx], Xte, y[test_idx], standardize=args.standardize)
     plot_calibration(
         np.array(res_best["p_test"]),
@@ -221,7 +224,23 @@ def main():
         out_path=plots_dir / "calibration_best_probe.png",
     )
 
+    # Save the probe direction for downstream causal experiments.
+    # The direction is the unit-normalised logistic regression weight (in standardised space).
+    # To apply: z = (x - scaler_mean) / scaler_std; score = z @ coef + intercept
+    coef = np.array(res_best["coef"], dtype=np.float32)   # (hidden_dim,)
+    coef_norm = coef / (np.linalg.norm(coef) + 1e-12)
+    np.savez(
+        out_dir / "best_probe_direction.npz",
+        coef=coef,
+        coef_norm=coef_norm,
+        intercept=np.float32(res_best["intercept"]),
+        scaler_mean=sc.mean_.astype(np.float32),
+        scaler_std=sc.scale_.astype(np.float32),
+        position=np.array([best["position"]], dtype=object),
+        layer=np.array([best["layer"]], dtype=np.int32),
+    )
     print(f"[probe] wrote {out_dir / 'summary.json'} and plots in {plots_dir}")
+    print(f"[probe] wrote probe direction to {out_dir / 'best_probe_direction.npz'}")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ GEN_ROOT=/hai/scratch/karanps/CS221M/generations/$SLUG
 LOG=/hai/scratch/karanps/CS221M/logs/run_all_analysis.log
 mkdir -p "$(dirname "$LOG")"
 
-DATASETS=(simpleqa_force_n800 triviaqa_greedy_n500 nq_open_greedy_n500 popqa_force_n500 truthfulqa_greedy_n300 simpleqa_force_sampled_n200_k8)
+DATASETS=(simpleqa_force_n800 triviaqa_force_n500 nq_open_force_n500 popqa_force_n500 truthfulqa_force_n300 simpleqa_force_sampled_n200_k8)
 
 echo "== Grading ==" | tee -a "$LOG"
 for tag in "${DATASETS[@]}"; do
@@ -22,7 +22,7 @@ for tag in "${DATASETS[@]}"; do
 done
 
 echo "== Verbalized confidence ==" | tee -a "$LOG"
-for tag in simpleqa_force_n800 triviaqa_greedy_n500 nq_open_greedy_n500 popqa_force_n500; do
+for tag in simpleqa_force_n800 triviaqa_force_n500 nq_open_force_n500 popqa_force_n500 truthfulqa_force_n300; do
     gen_dir=$GEN_ROOT/$tag
     if [ -d "$gen_dir" ]; then
         echo "  verbal-conf $tag" | tee -a "$LOG"
@@ -31,7 +31,7 @@ for tag in simpleqa_force_n800 triviaqa_greedy_n500 nq_open_greedy_n500 popqa_fo
 done
 
 echo "== Experiment 1+4: layer probes + baselines ==" | tee -a "$LOG"
-for tag in simpleqa_force_n800 triviaqa_greedy_n500 nq_open_greedy_n500 popqa_force_n500 truthfulqa_greedy_n300; do
+for tag in simpleqa_force_n800 triviaqa_force_n500 nq_open_force_n500 popqa_force_n500 truthfulqa_force_n300; do
     gen_dir=$GEN_ROOT/$tag
     if [ -d "$gen_dir" ]; then
         echo "  probe $tag" | tee -a "$LOG"
@@ -50,18 +50,19 @@ echo "== Experiment 3: cross-dataset transfer ==" | tee -a "$LOG"
 python3 scripts/06_transfer.py --out-tag cross_dataset --position answer_last \
     --gen-dirs \
         "simpleqa:$GEN_ROOT/simpleqa_force_n800" \
-        "triviaqa:$GEN_ROOT/triviaqa_greedy_n500" \
-        "nq_open:$GEN_ROOT/nq_open_greedy_n500" \
+        "triviaqa:$GEN_ROOT/triviaqa_force_n500" \
+        "nq_open:$GEN_ROOT/nq_open_force_n500" \
         "popqa:$GEN_ROOT/popqa_force_n500" \
-        "truthfulqa:$GEN_ROOT/truthfulqa_greedy_n300" 2>&1 | tee -a "$LOG"
+        "truthfulqa:$GEN_ROOT/truthfulqa_force_n300" 2>&1 | tee -a "$LOG"
 
 echo "== Experiment 4: verbalized-confidence comparison ==" | tee -a "$LOG"
 python3 scripts/07_verbal_compare.py --out-tag verbal_compare \
     --gen-dirs \
         "simpleqa:$GEN_ROOT/simpleqa_force_n800" \
-        "triviaqa:$GEN_ROOT/triviaqa_greedy_n500" \
-        "nq_open:$GEN_ROOT/nq_open_greedy_n500" \
-        "popqa:$GEN_ROOT/popqa_force_n500" 2>&1 | tee -a "$LOG"
+        "triviaqa:$GEN_ROOT/triviaqa_force_n500" \
+        "nq_open:$GEN_ROOT/nq_open_force_n500" \
+        "popqa:$GEN_ROOT/popqa_force_n500" \
+        "truthfulqa:$GEN_ROOT/truthfulqa_force_n300" 2>&1 | tee -a "$LOG"
 
 echo "== Aggregate summary ==" | tee -a "$LOG"
 python3 scripts/08_summary.py 2>&1 | tee -a "$LOG"
