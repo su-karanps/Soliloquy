@@ -98,11 +98,39 @@ def gen_with_steer(model, tok, input_ids, direction, mode, alpha, layer, positio
             "first_logits": out.scores[0][0].cpu().float() if out.scores else None}
 
 
+def fit_probe_at_layer(rows, position: str, layer: int):
+    """Fit a logistic probe at (position, layer) using cached hidden states.
+
+    Returns (coef_norm, scaler_mean, scaler_std).
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    X, y = [], []
+    for r in rows:
+        path = r.get("hidden_states_path")
+        if not path or r.get("did_abstain"):
+            continue
+        h = torch.load(path, map_location="cpu", weights_only=False)
+        X.append(h[position][layer].numpy())
+        y.append(int(r["is_correct"]))
+    X = np.stack(X, 0)
+    y = np.array(y)
+    sc = StandardScaler()
+    Xs = sc.fit_transform(X)
+    clf = LogisticRegression(penalty="l2", C=1.0, max_iter=2000, class_weight="balanced")
+    clf.fit(Xs, y)
+    coef = clf.coef_.squeeze()
+    coef_norm = coef / (np.linalg.norm(coef) + 1e-12)
+    return coef_norm.astype(np.float32), sc.mean_.astype(np.float32), sc.scale_.astype(np.float32)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gen-dir", required=True)
-    ap.add_argument("--probe-tag", required=True,
-                    help="probe out-tag (loads best_probe_direction.npz)")
+    ap.add_argument("--probe-tag", required=False, default=None,
+                    help="(optional) probe out-tag to load direction from "
+                         "best_probe_direction.npz. If not given, fits a probe at "
+                         "--steer-layer using cached hidden states.")
     ap.add_argument("--patch-summary", required=True,
                     help="14_patch_residual.py summary.json for peak layer")
     ap.add_argument("--out-tag", required=True)
@@ -113,21 +141,35 @@ def main():
     ap.add_argument("--max-new-tokens", type=int, default=24)
     ap.add_argument("--target", choices=["incorrect", "correct"], default="incorrect",
                     help="Steer to flip *incorrect* generations (rescue) or *correct* (corrupt)")
+    ap.add_argument("--steer-layer", type=int, default=None,
+                    help="Layer at which to apply MLP steering (defaults to patch summary peak)")
+    ap.add_argument("--steer-position", default="prompt_last",
+                    help="Position name in cached hidden states to fit/load the direction from "
+                         "(prompt_last, answer_first, answer_last, answer_mean)")
     args = ap.parse_args()
 
     import os
     os.environ.setdefault("HF_HOME", "/hai/scratch/karanps/hf/")
 
-    # Load the probe direction (unit vector in standardised hidden-state space).
-    pdata = np.load(PROBES_DIR / args.probe_tag / "best_probe_direction.npz", allow_pickle=True)
-    coef_norm = torch.tensor(pdata["coef_norm"], dtype=torch.float32)
-    print(f"[mlp-steer] loaded probe direction "
-          f"(L{int(pdata['layer'][0])}, pos={pdata['position'][0]})")
-
     # Load peak MLP layer from patching results.
     patch_summary = json.loads(Path(args.patch_summary).read_text())
-    target_layer = patch_summary.get("component_patch_layer", patch_summary["peak_rescue_layer"])
-    print(f"[mlp-steer] steering at MLP of L{target_layer} (from patching summary)")
+    target_layer = args.steer_layer if args.steer_layer is not None else patch_summary.get(
+        "component_patch_layer", patch_summary["peak_rescue_layer"])
+    print(f"[mlp-steer] steering at MLP of L{target_layer}")
+
+    # Load or fit the direction.
+    if args.probe_tag:
+        pdata = np.load(PROBES_DIR / args.probe_tag / "best_probe_direction.npz", allow_pickle=True)
+        coef_norm = torch.tensor(pdata["coef_norm"], dtype=torch.float32)
+        print(f"[mlp-steer] loaded probe direction from {args.probe_tag} "
+              f"(probe-trained at L{int(pdata['layer'][0])}, pos={pdata['position'][0]})")
+    else:
+        # Fit a fresh probe at the steering layer using cached hidden states.
+        all_rows = read_jsonl(Path(args.gen_dir) / "graded.jsonl")
+        print(f"[mlp-steer] fitting probe at ({args.steer_position}, L{target_layer}) "
+              f"on {sum(1 for r in all_rows if not r.get('did_abstain'))} non-abstain rows")
+        coef_np, _, _ = fit_probe_at_layer(all_rows, args.steer_position, target_layer)
+        coef_norm = torch.tensor(coef_np, dtype=torch.float32)
 
     gen_dir = Path(args.gen_dir)
     rows = read_jsonl(gen_dir / "graded.jsonl")

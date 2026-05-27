@@ -1,0 +1,16 @@
+mode,alpha,target,n,correct_rate,abstain_rate,flipped_to_correct_rate,mean_logprob
+add,0.0,incorrect,80,0.0,0.0,0.0,-0.5283465717820864
+add,1.0,incorrect,80,0.0,0.0,0.0,-0.5280216951547123
+add,2.0,incorrect,80,0.0,0.0,0.0,-0.5288102035855091
+add,4.0,incorrect,80,0.0,0.0,0.0,-0.5264905295843733
+add,8.0,incorrect,80,0.0,0.0,0.0,-0.5362977082608951
+add,16.0,incorrect,80,0.0,0.0,0.0,-0.5358694084940003
+subtract,0.0,incorrect,80,0.0,0.0,0.0,-0.5283465717820864
+subtract,1.0,incorrect,80,0.0,0.0,0.0,-0.528247380023833
+subtract,2.0,incorrect,80,0.0,0.0,0.0,-0.5277754756978182
+subtract,4.0,incorrect,80,0.0,0.0,0.0,-0.5287381571252533
+subtract,8.0,incorrect,80,0.0125,0.0,0.0125,-0.5352911080165775
+subtract,16.0,incorrect,80,0.0125,0.0,0.0125,-0.5355553445154637
+project_out,0.0,incorrect,80,0.0,0.0,0.0,-0.5283465717820864
+project_out,0.5,incorrect,80,0.0,0.0,0.0,-0.5294314568358895
+project_out,1.0,incorrect,80,0.0,0.0,0.0,-0.5286860422511823
