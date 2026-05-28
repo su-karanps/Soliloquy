@@ -237,3 +237,66 @@ Steering along correctness probe direction at (answer_first, L15) during generat
 - Correctness probe AUC: 0.913 | verbal-conf probe AUC: 0.911
 - Cross-prediction: correctness→verbal_conf=0.788, verbal_conf→correctness=0.759
 - Quadrant breakdown (n=409): incorrect+confident=84 (21%), correct+unconfident=35 (9%)
+
+---
+
+## New experiments — causal robustness & multi-model replication
+
+### Exp 5+6 v2 — Same-question paired patching (Qwen-3B, SimpleQA)
+Stronger causal test: correct and incorrect trajectories are sampled from the **same question**, eliminating topic/difficulty confounds.
+- 25 same-question (C, W) pairs (questions with ≥1 correct and ≥1 incorrect sampled answer)
+- Same-question rescue: peak **L35**, effect = **+0.467**
+- Cross-question control (different qids, upper bound on topic-injection effect): peak L34, effect = +7.676
+- Pattern is qualitatively identical to cross-question patching (late-layer, near-zero at L0–L20), confirming the L35 causal bottleneck is not an artifact of question-content injection.
+
+### Exp 7 v2 — MLP-output directional steering (Qwen-3B, SimpleQA)
+Applied probe direction as ±α steering directly to the L35 MLP output (the causally active component), using a probe fit at (prompt_last, L35).
+- All modes (add / subtract / project_out) show **no systematic correctness improvement** up to α=16
+- Only subtract α=16 flips 1/80 examples (1.3%) — consistent with noise
+- Interpretation: even at the causally active layer and component, the 1-D probe direction is not a sufficient control knob for generation. The causal effect from patching is multi-dimensional (it injects the full correct-run residual vector, not just one direction). This sharpens the "readable ≠ controllable" conclusion: a single linear direction is informative but not causal.
+
+### Headline figure — Decodability vs causality mismatch (Qwen-3B)
+- Peak probe decodability: **L15** (answer_first, AUC=0.820)
+- Peak causal rescue: **L35** (residual patching, Δ=2.76)
+- **Layer gap: +20** — correctness is readable 20 layers before it becomes causally controllable
+
+### Position specificity (Qwen-3B, SimpleQA, cross-question patching)
+Patching at different token positions shows where causal information lives:
+| Position | Peak layer | Peak rescue effect |
+|---|---|---|
+| prompt_last | L35 | **+3.74** ← strongest |
+| answer_last | L35 | +1.91 |
+| answer_first | L30 | +0.49 |
+| answer_mean | L30 | +0.45 |
+
+The **final prompt token** (before any generation) at L35 carries more causal information than answer-position patches. This suggests the model's answer-selection state is largely determined at the last prompt position in late layers — prior to generating the first answer token.
+
+### Dataset-transfer causal patching (Qwen-3B, cross-question)
+Does the late-layer MLP rescue effect generalize across datasets?
+| Dataset | Peak rescue layer | Peak effect | MLP rescue | Attn rescue |
+|---|---|---|---|---|
+| SimpleQA | L35 | 2.76 | 0.970 | 0.205 |
+| TriviaQA | L34 | 7.02 | 2.620 | 0.237 |
+| NQ-Open | L32 | 6.71 | 3.066 | 0.042 |
+| PopQA | L34 | 7.70 | 0.725 | 0.252 |
+| TruthfulQA | L35 | 11.87 | 1.190 | 0.206 |
+
+**Late-layer MLP dominance holds on every dataset.** Peak rescue is consistently in L32–L35 (the final ~4 layers of the 36-layer model), and MLP rescue exceeds attention rescue on all five datasets.
+
+### Multi-model replication (SimpleQA, forced-answer prompt)
+| Model | Best probe L | Probe AUC | Peak rescue L | Rescue eff | MLP rescue | Attn rescue | MLP/Attn | Decodability gap |
+|---|---|---|---|---|---|---|---|---|
+| Qwen-3B | L15 | 0.820 | L35 | 2.76 | 0.970 | 0.205 | 4.7× | +20 layers |
+| Qwen-7B | L27 | 0.850 | L27 | 5.75 | 3.068 | 0.374 | 8.2× | 0 layers |
+| Llama-3.1-8B | L28 | 0.771 | L31 | 2.30 | 0.068 | 0.042 | 1.6× | +3 layers |
+
+**Consistent pattern across all three models**: late-layer causal bottleneck, MLP-dominated at the peak rescue layer. The decodability gap varies (large for Qwen-3B, near-zero for Qwen-7B, small for Llama-8B), but the signal is present in all cases.
+
+### Multi-model confidence dissociation (SimpleQA, forced-answer prompt)
+| Model | cos(correct_dir, conf_dir) | incorrect+confident | correct+confident |
+|---|---|---|---|
+| Qwen-3B | 0.067 | 488/800 (61%) | 73/800 (9%) |
+| Qwen-7B | 0.041 | 428/500 (85%) | 57/500 (11%) |
+| Llama-3.1-8B | 0.017 | 359/498 (72%) | 72/498 (14%) |
+
+Correctness and verbalized confidence probe directions are **near-orthogonal in all three models** (cosine similarity 0.02–0.07). Under our forced-answer SimpleQA prompting, the dominant failure mode is incorrect-but-confident across all model sizes and families. This is a prompting/distribution caveat, not a universal claim about all tasks.

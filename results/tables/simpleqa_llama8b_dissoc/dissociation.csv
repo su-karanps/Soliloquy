@@ -1,0 +1,2 @@
+dataset,layer,position,cos_sim,auc_corr,auc_conf,auc_corr_on_conf,auc_conf_on_corr
+simpleqa_force_n500,28,answer_first,0.0175,0.7427,0.5978,0.6481,0.6192
