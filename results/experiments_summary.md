@@ -243,11 +243,11 @@ Steering along correctness probe direction at (answer_first, L15) during generat
 ## New experiments — causal robustness & multi-model replication
 
 ### Exp 5+6 v2 — Same-question paired patching (Qwen-3B, SimpleQA)
-Stronger causal test: correct and incorrect trajectories are sampled from the **same question**, eliminating topic/difficulty confounds.
-- 25 same-question (C, W) pairs (questions with ≥1 correct and ≥1 incorrect sampled answer)
-- Same-question rescue: peak **L35**, effect = **+0.467**
-- Cross-question control (different qids, upper bound on topic-injection effect): peak L34, effect = +7.676
-- Pattern is qualitatively identical to cross-question patching (late-layer, near-zero at L0–L20), confirming the L35 causal bottleneck is not an artifact of question-content injection.
+Uses 8-sample temperature runs (`simpleqa_force_sampled_n200_k8`) to find (correct, wrong) pairs from the *same question*.
+- 25 same-question (C, W) pairs; patch at `answer_first` (only meaningful position since prompt is identical)
+- Same-question rescue: peak **L35**, effect = **+0.467** (SEM ≈ 1.85, not statistically significant)
+- Cross-question control (same 25 wrong examples, different-question donors): peak L34, effect = **+7.676**
+- **Interpretation caveat**: the large gap (0.47 vs 7.68) suggests the cross-question rescue includes substantial content injection from the donor question. Same-question patching at `answer_first` only injects first-token identity, not a rich correctness signal. We treat the cross-question curves as localization evidence rather than a clean causal claim about correctness transfer.
 
 ### Exp 7 v2 — MLP-output directional steering (Qwen-3B, SimpleQA)
 Applied probe direction as ±α steering directly to the L35 MLP output (the causally active component), using a probe fit at (prompt_last, L35).
@@ -299,4 +299,55 @@ Does the late-layer MLP rescue effect generalize across datasets?
 | Qwen-7B | 0.041 | 428/500 (85%) | 57/500 (11%) |
 | Llama-3.1-8B | 0.017 | 359/498 (72%) | 72/498 (14%) |
 
-Correctness and verbalized confidence probe directions are **near-orthogonal in all three models** (cosine similarity 0.02–0.07). Under our forced-answer SimpleQA prompting, the dominant failure mode is incorrect-but-confident across all model sizes and families. This is a prompting/distribution caveat, not a universal claim about all tasks.
+Correctness and verbalized confidence probe directions are **near-orthogonal in all three models** (cosine similarity 0.02–0.07). Under forced-answer SimpleQA prompting, the dominant failure mode is incorrect-but-confident across all model sizes and families. Note: SimpleQA is a hard factual-recall benchmark (~10% accuracy for 3B models); the high incorrect+confident rates reflect both dataset difficulty and the forced-answer prompt. On TriviaQA (40% accuracy) the rate drops to 31%.
+
+---
+
+## New experiments — verbal confidence & patching analysis
+
+### Probe failure qualitative analysis (script 21, Qwen-3B, SimpleQA)
+False-positive (FP): probe predicts correct, model is wrong. False-negative (FN): probe predicts wrong, model is correct.
+- FP count: 22 | FN count: 15
+- FP pattern: plausible-sounding but factually wrong answers with high verbal confidence (85–100). Examples: wrong years/dates, wrong people's names, topic-adjacent guesses.
+- FN pattern: probe scores near 0.000 despite the model's output being correct (e.g., "Mumtaz Mahal" → probe 0.000, answer correct).
+- FPs tend to have high verbal confidence, confirming the verbal/internal dissociation. FNs are typically short, specific proper nouns the probe under-represents.
+
+### Self-consistency baseline (Qwen-3B, SimpleQA, k=8 sampled answers)
+- Greedy accuracy: **8.5%**
+- Self-consistency (majority vote, k=8): **8.0%**
+- Questions with ≥1 correct answer across k=8: **21.5%** (43/200)
+- Questions where all 8 answers are wrong: **78.5%**
+- Self-consistency provides no benefit: errors are committed hallucinations, consistent across all samples. Activation patching does not improve self-consistency meaningfully.
+
+### Joint answer + confidence generation (script 25, Qwen-3B, SimpleQA)
+| Metric | Separate-pass | Joint-pass |
+|---|---|---|
+| incorrect+confident rate | 61% | 85% |
+| Correlation (r) with separate conf | — | 0.261 |
+| Answer agreement | — | 17% |
+- Joint elicitation is strictly worse for calibration. Forcing confidence inline causes the model to copy confident-answer style; verbal confidence is highly format-sensitive.
+
+---
+
+## Negative / null results
+
+The following experiments yielded null results and are reported for transparency.
+
+### Confidence-direction steering during generation (script 22)
+Steered the verbal-confidence probe direction at L35 MLP for confidently-wrong examples (n=50), then re-asked confidence.
+- Baseline mean confidence: ~82; after subtracting verbal-conf direction (α=5): mean increased to ~90
+- Answer flip rate: ~0%
+- Steering the verbal-confidence direction does not reduce stated confidence; the effect is null or reversed (ceiling effect).
+
+### Confidence-direction steering during elicitation pass (script 24)
+Steered verbal-confidence or correctness direction in L35 MLP *while generating the numeric confidence answer* (α ∈ {2, 5, 10}).
+- Model outputs ~98–99 confidence regardless of direction or magnitude.
+- Hard ceiling: the elicitation prompt format drives the model to always output a high number.
+
+### Patching answer flip rate (script 26, Qwen-3B, SimpleQA, L35, cross-question, n=60)
+| Component | Δlogit-diff | Answer flip rate (wrong→correct) |
+|---|---|---|
+| Full residual | +2.76 | **0%** (0/60) |
+| MLP-only | +1.93 | **5%** (3/60) |
+| Attention-only | +0.21 | **0%** (0/60) |
+- Despite large Δlogit-diff, patching rarely flips the generated answer. The model is committed to its wrong answer; patching shifts the distribution without crossing the argmax threshold. Logit-diff is a valid localization/causality metric but does not imply answer-level correction.

@@ -55,6 +55,20 @@ CONFIDENCE_PROMPT = (
     "Reply with a single integer from 0 to 100 and nothing else."
 )
 
+# Joint prompt: answer and confidence elicited in one unbroken generation.
+# The model generates "<answer>\nConfidence: <0-100>" so the confidence token's
+# hidden state is causally downstream of the answer in the same forward pass.
+JOINT_ANSWER_CONF_PROMPT = (
+    "Answer the following factual question with a short phrase, then rate your confidence "
+    "from 0 to 100.\n"
+    "You must give your best guess; do NOT say you don't know.\n"
+    "Format your response exactly as:\n"
+    "Answer: <your answer>\n"
+    "Confidence: <0-100>\n\n"
+    "Question: {question}\n"
+    "Answer:"
+)
+
 ABSTAIN_STRINGS = (
     "i don't know",
     "i do not know",

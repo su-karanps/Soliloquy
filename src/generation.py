@@ -31,6 +31,7 @@ from .config import (
     ANSWER_PROMPT,
     CONFIDENCE_PROMPT,
     GENERATIONS_DIR,
+    JOINT_ANSWER_CONF_PROMPT,
     POSITIONS,
     PROMPT_STYLES,
 )
@@ -346,4 +347,98 @@ def run_verbal_confidence(
                 "verbal_conf": conf["value"],
             }) + "\n")
             f_out.flush()
+    return out_path
+
+
+def run_joint_generation(
+    questions_jsonl: Path,
+    out_path: Path,
+    cfg: GenConfig,
+    overwrite: bool = False,
+) -> Path:
+    """Generate answer + confidence in one unbroken forward pass.
+
+    Uses JOINT_ANSWER_CONF_PROMPT which asks the model to output:
+        Answer: <phrase>
+        Confidence: <0-100>
+
+    The confidence token is generated in the same context as the answer, so its
+    hidden state is causally downstream of the answer tokens — unlike the separate
+    two-pass approach in run_verbal_confidence.
+
+    Writes <out_path> as JSONL with fields:
+        qid, gen_idx, question, answer_text, verbal_conf, verbal_conf_raw, full_raw
+    """
+    import re as _re
+    out_path = Path(out_path)
+    if overwrite and out_path.exists():
+        out_path.unlink()
+    done: set[tuple[str, int]] = set()
+    if out_path.exists():
+        with out_path.open() as f:
+            for line in f:
+                try:
+                    o = json.loads(line)
+                    done.add((o["qid"], o["gen_idx"]))
+                except Exception:
+                    continue
+
+    model, tok = load_model_and_tokenizer(cfg)
+
+    with questions_jsonl.open() as f_in, out_path.open("a") as f_out:
+        rows = [json.loads(line) for line in f_in]
+        for row in tqdm(rows, desc="joint_gen"):
+            key = (row["qid"], row.get("gen_idx", 0))
+            if key in done:
+                continue
+
+            question = row["question"]
+            user_content = JOINT_ANSWER_CONF_PROMPT.format(question=question)
+            messages = [{"role": "user", "content": user_content}]
+            try:
+                prompt_text = tok.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+            except Exception:
+                prompt_text = user_content
+
+            enc = tok(prompt_text, return_tensors="pt").to(model.device)
+            with torch.no_grad():
+                out = model.generate(
+                    input_ids=enc.input_ids,
+                    attention_mask=enc.attention_mask,
+                    max_new_tokens=40,
+                    do_sample=False,
+                    pad_token_id=tok.pad_token_id,
+                )
+            full_raw = tok.decode(
+                out[0, enc.input_ids.shape[1]:], skip_special_tokens=True
+            ).strip()
+
+            # Parse "Answer: ... \n Confidence: NN"
+            answer_text, conf_value = None, None
+            ans_m = _re.search(r"(?i)answer[:\s]+(.+?)(?:\n|confidence|$)", full_raw)
+            if ans_m:
+                answer_text = ans_m.group(1).strip().rstrip(".")
+            conf_m = _re.search(r"(?i)confidence[:\s]+(\d{1,3})", full_raw)
+            if conf_m:
+                v = int(conf_m.group(1))
+                conf_value = v if 0 <= v <= 100 else None
+
+            # Fallback: if no "Answer:" prefix, treat first line as answer
+            if answer_text is None:
+                lines = [l.strip() for l in full_raw.splitlines() if l.strip()]
+                answer_text = lines[0] if lines else ""
+
+            f_out.write(json.dumps({
+                "qid": row["qid"],
+                "gen_idx": row.get("gen_idx", 0),
+                "question": question,
+                "answer_text": answer_text or "",
+                "verbal_conf": conf_value,
+                "verbal_conf_raw": full_raw,
+                "full_raw": full_raw,
+            }) + "\n")
+            f_out.flush()
+
     return out_path

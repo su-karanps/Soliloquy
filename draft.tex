@@ -1,0 +1,641 @@
+\begin{abstract}
+Language models often answer factual questions incorrectly while appearing
+confident. We ask whether models nevertheless encode an internal correctness
+signal that is separable from output confidence, and whether that signal is
+causally involved in answer selection. We collect short-form QA generations from
+\qwen{} across five datasets, train linear probes on residual-stream activations,
+compare them to log-probability and verbal-confidence baselines, and run causal
+interventions by patching hidden states from correct runs into incorrect runs.
+Linear probes recover correctness with strong held-out performance: best AUCs are
+0.820 on SimpleQA, 0.850 on TriviaQA, 0.805 on NQ-Open, 0.913 on PopQA, and 0.821
+on TruthfulQA. Verbalized confidence is consistently weaker, and its direction in
+activation space is nearly orthogonal to the correctness direction. Causal
+patching shows that late-layer states, especially MLP outputs, can move the
+model's next-token evidence toward the correct answer, and this pattern replicates
+on Qwen2.5-7B and Llama-3.1-8B. However, the effect is mostly logit-level rather
+than behavioral: patched runs rarely flip to the correct final answer, and
+steering along a one-dimensional probe direction does not reliably improve
+correctness or confidence. These results suggest a sharp distinction between
+readable correctness signals, logit-causal representations, and practically
+controllable mechanisms.
+\end{abstract}
+
+\section{Introduction}
+
+Modern language models can produce fluent factual answers that are wrong. They can
+also report high confidence in those answers. This mismatch creates a practical
+problem for deployment and a scientific problem for interpretability. If the model
+internally represents that an answer is unreliable, then hidden activations may
+support better hallucination detection than surface confidence. If that
+representation participates in the computation that selects the answer, then it
+may also identify a causal circuit that can be intervened on. These two
+possibilities are related but not equivalent.
+
+Prior work shows that hidden states often contain truthfulness or correctness
+signals that are not obvious from generated text alone
+\citep{Azaria2023TheLying,Burns2024DiscoveringSupervision,Marks2024TheDatasets}.
+However, a decodable signal need not be a causal signal. A linear probe may read
+information that is present in the network without identifying the mechanism that
+selects the answer. Even causal evidence has degrees: an activation may move the
+next-token distribution without being strong enough to change the final generated
+answer. These distinctions matter for interpretability and for interventions: a
+useful detector of hallucination is not necessarily a useful knob for reducing
+hallucination.
+
+We study these distinctions in short-form factual QA. We ask three questions. First,
+can correctness be decoded from residual-stream activations better than standard
+confidence baselines? Second, is the decoded signal different from verbalized
+confidence? Third, do the same activations causally affect answer selection?
+
+Our contributions are:
+\begin{itemize}
+    \item We build a layer-by-position probing benchmark for generated factual QA
+    answers across five datasets, comparing internal probes to log-probability,
+    entropy, margin, and verbal-confidence baselines.
+    \item We show that correctness and verbalized confidence are geometrically
+    distinct: their probe directions have near-zero cosine similarity across three
+    model families.
+    \item We use residual, component, head, same-question, and position-specific
+    patching to localize a late-layer, MLP-dominated representation that causally
+    affects next-token evidence.
+    \item We show a negative intervention result: the same linear direction that
+    predicts correctness does not provide reliable one-dimensional control over
+    generation or verbal confidence.
+\end{itemize}
+
+The resulting picture is deliberately nuanced. Correctness is highly decodable
+from residual-stream states, and the probe often outperforms output-confidence
+baselines. Causal interventions identify late-layer states that move the model's
+evidence toward the right answer. But this movement usually does not flip the
+final answer, and simple directional steering along the probe direction does not
+reliably make answers correct. The internal signal is readable, partly
+logit-causal, and not straightforwardly behavior-controlling.
+
+\section{Related Work}
+
+\paragraph{Model confidence and calibration.}
+Calibration work studies whether model probabilities track correctness
+\citep{Guo2017Calibration,Kadavath2022LanguageKnow}. In language models, token
+log-probabilities, entropy, margins, and self-reported confidence all provide
+useful but imperfect evidence about answer quality. These quantities are attractive
+because they are easy to compute and require no access to internal activations.
+They are also incomplete: a model can assign high probability to a fluent but
+false continuation, and a verbal confidence prompt measures what the model says
+about its confidence rather than what its computation represents. TruthfulQA
+highlights this distinction by showing that models can imitate common falsehoods
+under adversarially selected factual questions \citep{Lin2022TruthfulQA:Falsehoods}.
+Our work treats these external signals as baselines and asks when hidden states add
+information beyond them.
+
+\paragraph{Probing hidden representations.}
+Linear probes are widely used to test whether a property is represented in neural
+activations \citep{Alain2017UnderstandingRepresentations,Hewitt2019DesigningProbes}.
+For factuality and truthfulness, several studies show that hidden states encode
+whether a model's statement is true or whether it is likely to be lying
+\citep{Azaria2023TheLying,Burns2024DiscoveringSupervision,Marks2024TheDatasets}.
+These results motivate activation-based monitors for hallucination. At the same
+time, probe accuracy alone is ambiguous: a probe may recover information that is
+stored, correlated with another feature, or linearly exposed only after the
+behavior has already been determined. We build on this line of work by focusing on
+generated short-answer QA, using question-disjoint splits and within-question
+controls, and then testing whether the same signal is causal.
+
+\paragraph{Mechanistic interpretability and causal interventions.}
+Mechanistic interpretability aims to localize computations inside model components
+\citep{Olah2020ZoomIn,Elhage2021MathematicalFramework,Wang2023InterpretabilityWild}.
+Activation patching and causal mediation replace activations from one run with
+activations from another to test whether a representation affects behavior
+\citep{Vig2020CausalMediation,Geiger2021CausalAbstractions}. We use residual,
+attention-output, MLP-output, head-level, and position-specific patching to test
+whether correctness information is only decodable or also involved in answer
+selection. This causal framing separates our question from a pure detection task:
+we are not only asking whether a hidden state predicts correctness, but whether
+changing that state changes the model's evidence for the correct answer.
+
+\section{Methods}
+
+\subsection{Task and Generation}
+
+We evaluate short-form factual QA on SimpleQA, TriviaQA, NQ-Open, PopQA, and
+TruthfulQA. The primary model is \qwen{}. We also replicate key causal and probing
+results on Qwen2.5-7B-Instruct and Llama-3.1-8B-Instruct.
+
+Most experiments use a forced-answer prompt: the model is instructed to give its
+best guess and not say that it does not know. This removes abstentions and creates
+a pool of confidently wrong answers. This prompt is not intended to model all
+real deployments; it is an experimental stress test that makes the
+confidence-correctness gap easy to observe. We also report greedy non-forced
+variants for NQ-Open, TriviaQA, and TruthfulQA where available, because those
+settings expose a different failure mode: the model often abstains, leaving a
+smaller but more selective set of answered questions.
+
+For each generation, we store the answer text, token log-probabilities,
+token-level entropies and margins, verbalized confidence, and hidden states at
+four positions:
+\begin{itemize}
+    \item \texttt{prompt\_last}: the final prompt token before generation;
+    \item \texttt{answer\_first}: the first generated answer token;
+    \item \texttt{answer\_last}: the final generated answer token;
+    \item \texttt{answer\_mean}: the mean over generated answer-token states.
+\end{itemize}
+Layer 0 denotes the token embedding. Transformer blocks are indexed thereafter.
+The four positions let us distinguish information available before generation
+(\texttt{prompt\_last}), at answer onset (\texttt{answer\_first}), after the answer
+has been produced (\texttt{answer\_last}), and across the entire generated answer
+(\texttt{answer\_mean}).
+
+\subsection{Correctness Labels}
+
+Answers are graded with normalized exact match, token-F1, fuzzy matching, and
+substring containment against gold answers. We remove abstentions for probe and
+baseline evaluation. The label is binary: correct or incorrect.
+This grading rule is intentionally permissive for short answers: aliases,
+minor formatting differences, and partial strings can be accepted when they match
+the gold answer. Abstention detection is applied before grading so that ``I don't
+know''-style outputs are not counted as incorrect factual guesses in the
+non-forced setting.
+
+\subsection{Linear Correctness Probes}
+
+For every layer and position, we fit an L2-regularized logistic regression probe on
+standardized residual-stream activations. Unless otherwise stated, probes use a
+question-disjoint train/test split, so questions in the test set are not seen in
+training. We report held-out AUC, accuracy, F1, log loss, and expected calibration
+error. AUC is the main metric because the datasets are class-imbalanced: for
+example, SimpleQA forced has many more incorrect than correct answers. The probe is
+therefore evaluated as a ranker of correctness rather than only as a fixed-threshold
+classifier.
+
+For each dataset, the headline probe is selected by held-out AUC over the grid of
+layers and positions. This selection can favor different positions across
+datasets, which is itself informative: if correctness is most readable at
+\texttt{prompt\_last}, the model's answer state is already present before
+generation; if it is most readable at \texttt{answer\_last}, correctness becomes
+linearly accessible only after the answer trajectory has unfolded.
+
+\subsection{Confidence Baselines}
+
+We compare probes against non-probe baselines computed from the generated answer:
+mean log-probability, minimum log-probability, first-token entropy, mean entropy,
+first-token margin, and mean margin. We also ask the model for a verbalized
+confidence score from 0 to 100 after it answers. These baselines test whether the
+probe is merely rediscovering uncertainty already visible in the output
+distribution. The verbalized-confidence baseline is stricter: it asks whether the
+model can explicitly report its own uncertainty in natural language.
+
+We also evaluate two variants that test whether the confidence result is an
+artifact of elicitation. In a joint prompt, the model generates both an answer and
+a confidence number in one response. For sampled SimpleQA generations, we compute
+self-consistency by majority vote over eight sampled answers. These are still
+external baselines: they use only what the model says, not hidden activations.
+
+\subsection{Causal Patching}
+
+We test causality using activation patching. For a correct run $c$ and incorrect
+run $w$, we replace an activation in $w$ with the corresponding activation from
+$c$. We then measure the change in logit difference:
+\[
+\Delta = \left[\ell(\text{gold first token}) - \ell(\text{wrong first token})\right]_{\text{patched}}
+- \left[\ell(\text{gold first token}) - \ell(\text{wrong first token})\right]_{\text{clean}}.
+\]
+A positive value means the patch moves the model toward the gold answer and away
+from the wrong answer. We patch residual streams by layer, then localize the effect
+to attention outputs, MLP outputs, individual attention heads, and token positions.
+We also run a same-question control: the correct and wrong trajectories come from
+different samples of the same question. In this setting the prompt is identical
+across trajectories, so the control patches answer-token states rather than the
+pre-generation prompt state.
+
+This metric is deliberately local. It does not require the entire generated answer
+to flip after patching; instead, it measures whether the patched state increases
+the model's immediate preference for the gold first token over the originally
+wrong first token. This makes the intervention sensitive to answer-selection
+mechanisms while avoiding the cost and stochasticity of full regenerated samples
+for every patch. We therefore use patching primarily as a localization tool: a
+positive rescue effect means the activation causally changes next-token evidence,
+not that the model's decoded answer necessarily changes.
+
+\subsection{Directional Steering}
+
+Finally, we test whether the probe direction can control generation. We add,
+subtract, or project out multiples of the learned correctness direction during
+generation, including at the late MLP component that patching identifies as
+causally active. This tests whether a one-dimensional linear direction is a usable
+intervention. The comparison is important because patching inserts a full
+high-dimensional activation vector, whereas steering changes only one direction.
+If steering fails while patching succeeds, the causal information is likely
+distributed across a subspace or nonlinear state rather than captured by the probe
+normal vector alone.
+
+\section{Experimental Setup}
+
+\paragraph{Models.}
+The main experiments use \qwen{}, a 36-layer instruction-tuned model. Replication
+experiments use Qwen2.5-7B-Instruct and Llama-3.1-8B-Instruct. We focus on
+instruction-tuned models because the target behavior is realistic question
+answering rather than next-token prediction on isolated statements. The 3B model
+is small enough for dense layer-by-layer activation collection and patching, while
+the 7B and 8B models test whether the qualitative pattern survives scale and model
+family changes.
+
+\paragraph{Datasets.}
+We generate 800 SimpleQA examples, 500 TriviaQA examples, 500 NQ-Open examples,
+500 PopQA examples, and 300 TruthfulQA examples under the forced-answer prompt.
+For the within-question control, we sample 8 completions for each of 200 SimpleQA
+questions and keep questions that have at least one correct and one incorrect
+completion. The forced-answer generation totals are intentionally heterogeneous in
+difficulty: SimpleQA has a low correct rate, TriviaQA and NQ-Open include more
+standard factoid questions, PopQA emphasizes long-tail entities, and TruthfulQA
+contains adversarially selected questions where common misconceptions are tempting.
+This mix lets us test whether correctness probes transfer beyond a single QA
+distribution.
+
+\paragraph{Splits and class balance.}
+Probe evaluations use held-out splits over question IDs whenever possible. This
+prevents the probe from seeing the same question during training and testing. The
+class balance varies substantially across datasets; for instance, SimpleQA forced
+contains 83 correct and 717 incorrect answers, whereas TriviaQA forced contains
+199 correct and 300 incorrect answers. We therefore report AUC as the primary
+metric and use accuracy only as a secondary summary.
+
+\paragraph{Hardware and implementation.}
+Generations and patching experiments run on a single H100 80GB GPU with bf16
+forward passes. Probes are trained on CPU with scikit-learn. Figures are generated
+by \texttt{scripts/20\_paper\_figures.py}. Large raw artifacts, including
+per-question hidden-state tensors and generations, are stored outside the Git
+repository; the repository tracks the CSV summaries and figures needed to
+reproduce the paper-level results.
+
+\section{Results}
+
+\subsection{Correctness Is Decodable From Residual-Stream States}
+
+Table~\ref{tab:probe_baselines} summarizes the strongest probe and strongest
+non-probe confidence baseline for each dataset variant. Probes outperform the best
+confidence baseline on five of eight variants. The strongest gains appear on PopQA
+and greedy TriviaQA. NQ-Open and forced TruthfulQA are cases where confidence
+baselines remain stronger.
+
+The failures are informative. In greedy NQ-Open, the model abstains on most
+prompts, so the remaining answered examples are already filtered toward cases
+where token confidence is meaningful. In forced TruthfulQA, margin and entropy
+baselines are unusually strong, likely because many wrong answers are generic or
+low-support continuations. The probe is therefore not a universal replacement for
+output confidence; rather, it captures additional information that is sometimes
+not exposed by token probabilities.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Best correctness probe versus the best non-probe confidence baseline.
+Forced datasets use the no-abstention prompt.}
+\label{tab:probe_baselines}
+\begin{tabular}{lccc}
+\toprule
+Dataset & Best probe AUC & Best baseline AUC & $\Delta$ \\
+\midrule
+NQ-Open (forced) & 0.805 & 0.833 & -0.028 \\
+NQ-Open (greedy) & 0.730 & 0.817 & -0.087 \\
+PopQA (forced) & 0.913 & 0.772 & +0.141 \\
+SimpleQA (forced) & 0.820 & 0.785 & +0.036 \\
+TriviaQA (forced) & 0.850 & 0.844 & +0.006 \\
+TriviaQA (greedy) & 0.929 & 0.854 & +0.075 \\
+TruthfulQA (forced) & 0.821 & 0.882 & -0.061 \\
+TruthfulQA (greedy) & 1.000 & 0.942 & +0.058 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.92\linewidth]{fig1_probe_auc_by_layer.png}
+    \caption{Correctness probe AUC by layer. Correctness is generally not readable
+    at the embedding layer, rises through the model, and often peaks in mid-to-late
+    layers.}
+    \label{fig:probe_auc}
+\end{figure}
+
+Figure~\ref{fig:probe_auc} shows the layerwise structure. The embedding layer is
+near chance. AUC rises through the model, with peak layer depending on dataset and
+token position. For SimpleQA, the best probe appears at \texttt{answer\_first}
+layer 15, before the answer is complete. For PopQA and TriviaQA, late answer-token
+states are especially informative.
+This position dependence suggests that ``internal correctness'' is not a single
+static feature. Some tasks expose a pre-answer state that already indicates likely
+failure; others require the generated answer trajectory before correctness becomes
+linearly accessible.
+
+\subsection{The Signal Is Not Only Question Difficulty}
+
+The within-question control isolates generations from the same question. On the
+39 SimpleQA questions that produce both correct and incorrect sampled answers, the
+best question-disjoint probe reaches AUC 0.724. A split that trains and tests
+within the same question reaches AUC 0.989. The absolute within-question value is
+partly inflated by repeated question structure, but the large gap shows that
+hidden states contain answer-specific correctness information beyond topic or
+question difficulty.
+
+This control addresses a common objection to correctness probes: perhaps the probe
+only learns which questions are easy. If that were the whole story, then correct
+and incorrect answers to the same question should be hard to separate. Instead,
+the probe separates them extremely well when question identity is shared across
+train and test. We therefore interpret the signal as at least partly
+trajectory-specific: it reflects the answer the model is about to give, not only
+the prompt's prior difficulty.
+
+\subsection{Verbalized Confidence Is a Weak Correctness Signal}
+
+Verbalized confidence is the weakest predictor on every dataset we evaluate. Its
+AUC is 0.602 on SimpleQA, 0.785 on TriviaQA, 0.755 on NQ-Open, 0.687 on PopQA, and
+0.499 on TruthfulQA. This is not simply a calibration error in probability space:
+the direction for correctness in hidden-state space is nearly orthogonal to the
+direction for high verbal confidence.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.88\linewidth]{fig6_confidence_dissociation.png}
+    \caption{Correctness and verbal-confidence directions are nearly orthogonal.
+    The model can internally encode that an answer is likely wrong while still
+    producing high verbal confidence.}
+    \label{fig:confidence_dissociation}
+\end{figure}
+
+For \qwen{} on SimpleQA, the cosine between the correctness direction and the
+verbal-confidence direction is 0.067. The same pattern replicates on Qwen2.5-7B
+(0.041) and Llama-3.1-8B (0.017). Under forced-answer SimpleQA prompting,
+incorrect-but-confident answers dominate: 61\% for Qwen2.5-3B, 85\% for Qwen2.5-7B,
+and 72\% for Llama-3.1-8B.
+
+The near-orthogonality result makes the dissociation stronger than a simple AUC
+comparison. A poor verbal-confidence baseline could arise from noisy prompting or
+bad calibration. Here, the hidden direction that predicts high stated confidence
+is geometrically distinct from the direction that predicts correctness. The model
+does not merely report a blurred version of its internal correctness estimate.
+
+We also checked whether this was an artifact of asking for confidence in a
+separate pass. In a joint prompt where the model generated both an answer and a
+confidence number in one response, the result became less calibrated rather than
+more. Joint and separate confidence scores had low correlation ($r=0.261$),
+answers matched across formats only 17\% of the time, and the
+incorrect-but-confident rate rose to 85\%. Steering the verbal-confidence
+direction during the confidence-elicitation pass also failed: the model returned
+near-maximal confidence across steering magnitudes. These results suggest that
+the numeric confidence response is highly format-sensitive and partly a linguistic
+reflex, not a stable readout of the correctness representation.
+
+A related external baseline, self-consistency, also does not rescue this setting.
+On sampled SimpleQA generations, majority vote over eight samples gives 8.0\%
+accuracy, slightly below greedy accuracy. Moreover, 78.5\% of questions are never
+answered correctly across all eight samples. The errors are therefore not just
+sampling noise; for many questions, the model repeatedly falls into the same wrong
+factual basin.
+
+\subsection{Causal Patching Localizes a Late-Layer Bottleneck}
+
+Decodability alone does not show causality. We therefore patch activations from
+correct runs into incorrect runs. On SimpleQA with \qwen{}, residual-stream rescue
+is near zero in early and middle layers, then rises sharply after layer 22 and
+peaks at layer 35 with a logit-difference rescue effect of +2.76.
+
+This pattern rules out the simplest interpretation of the probe curve. If the most
+linearly decodable layer were also the primary causal site, then the patching peak
+would align with the probe peak. Instead, early and middle layers can expose a
+predictive feature while late layers carry the state that most directly changes
+the model's next-token preference.
+
+This logit-level effect should not be confused with answer-level correction. At
+the peak SimpleQA layer, full residual patching produces a large rescue effect
+(+2.76) but flips 0/60 wrong answers to correct when we regenerate and grade the
+full answer. MLP-only patching flips 3/60 answers, while attention-only patching
+flips none. Thus patching identifies activations that causally influence the
+output distribution, but the wrong answer often remains the argmax. This
+distinction helps explain why logit-level rescue and behavioral correction can
+diverge.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.92\linewidth]{fig2_rescue_by_layer.png}
+    \caption{Residual-stream activation patching. Injecting states from correct
+    runs into incorrect runs has little effect in early layers but strong rescue
+    effects in late layers.}
+    \label{fig:rescue_by_layer}
+\end{figure}
+
+The causal peak occurs much later than the most decodable SimpleQA layer. The
+best SimpleQA probe is at layer 15, while the strongest causal rescue is at layer
+35. Figure~\ref{fig:decoda_causa} shows this decodability--causality mismatch.
+We view this as a useful caution for representation analysis. Linear decodability
+can identify when information becomes readable, but not when that information is
+used. Causal patching supplies the complementary measurement: where changing the
+state changes the computation.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.92\linewidth]{fig3_decodability_vs_causality.png}
+    \caption{Decodability and causality do not peak at the same layer. In \qwen{},
+    correctness is most readable around layer 15, but patching has the largest
+    causal effect around layer 35.}
+    \label{fig:decoda_causa}
+\end{figure}
+
+\subsection{MLP Outputs Carry Most of the Causal Effect}
+
+At the peak rescue layer, we patch attention outputs and MLP outputs separately.
+MLP patching dominates attention patching across all five Qwen2.5-3B datasets.
+Table~\ref{tab:patching} gives the main numbers.
+
+The MLP dominance is consistent across datasets despite large differences in task
+difficulty and answer distribution. This does not imply that attention is
+irrelevant: attention may route information into the late residual stream before
+the measured layer, and individual heads can have positive effects. But at the
+causal bottleneck measured by patching, MLP outputs account for most of the rescue.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Dataset-transfer causal patching on \qwen{}. Peak rescue layers are all
+late, and MLP rescue exceeds attention rescue on every dataset.}
+\label{tab:patching}
+\begin{tabular}{lcccc}
+\toprule
+Dataset & Peak layer & Peak rescue & MLP rescue & Attn rescue \\
+\midrule
+SimpleQA & L35 & 2.76 & 0.970 & 0.205 \\
+TriviaQA & L34 & 7.02 & 2.620 & 0.237 \\
+NQ-Open & L32 & 6.71 & 3.066 & 0.042 \\
+PopQA & L34 & 7.70 & 0.725 & 0.252 \\
+TruthfulQA & L35 & 11.87 & 1.190 & 0.206 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.88\linewidth]{fig4_component_localization.png}
+    \caption{Component localization. Late-layer MLP outputs explain substantially
+    more rescue than attention outputs at the causal bottleneck.}
+    \label{fig:component_localization}
+\end{figure}
+
+Head-level localization finds a few attention heads with positive rescue effects,
+such as layer 35 head 5 on SimpleQA. These effects are small compared with the MLP
+effect. The causal computation is therefore late and MLP-dominated, not primarily
+an attention-head effect.
+This result also constrains possible circuit stories. A sparse attention-head
+explanation is insufficient for the main effect; the intervention points instead
+to a distributed late-layer transformation whose output is written through the MLP
+path.
+
+\subsection{Same-Question and Position Controls}
+
+Cross-question patching could inject topic or difficulty information. To control
+for this, we patch between correct and incorrect trajectories sampled from the
+same question. This is a stricter but lower-power control. The largest
+same-question effect is again in the late-layer region, at layer 35, but its
+magnitude is small (+0.467) and not statistically robust. By contrast, the matched
+cross-question control reaches +7.676.
+
+We therefore read the same-question result cautiously. Cross-question patching is
+strong evidence for where answer-relevant information can affect logits, but it
+is not a clean estimate of a pure correctness signal: some of the effect is likely
+donor-answer or topic-content transfer. The same-question control keeps the
+late-layer localization plausible, but it also shows that the full-answer
+correction story is weaker than the cross-question rescue curve alone would
+suggest.
+
+Position-specific patching shows that the final prompt token carries the strongest
+causal signal. On SimpleQA, \texttt{prompt\_last} patching peaks at layer 35 with
+effect +3.74. \texttt{answer\_last} also peaks at layer 35 but is smaller (+1.91),
+while \texttt{answer\_first} and \texttt{answer\_mean} peak near layer 30 and are
+below +0.50. The answer-selection state is therefore substantially formed before
+the first answer token is generated.
+This is consistent with the autoregressive computation: the final prompt position
+is the state from which the first answer token is predicted. Later answer-token
+states can still encode correctness, but they are partly downstream of the initial
+answer selection.
+
+\subsection{Probe Directions Are Not Reliable Steering Directions}
+
+If the linear probe identified a simple causal direction, adding that direction
+should improve answers. It does not. Prompt-level steering along the SimpleQA
+correctness direction changes correct rate by only +0.010 at the best tested
+setting. Late-MLP steering at the causally active layer also fails: adding,
+subtracting, or projecting out the direction up to $\alpha=16$ produces no
+systematic correctness improvement, with only one condition flipping 1 out of 80
+examples.
+
+This negative result is central to the paper. It shows that a direction can be a
+good readout without being a good actuator. Full activation patching transfers a
+high-dimensional state from a correct computation. Probe steering transfers only a
+single normal vector learned for classification. The failure of steering suggests
+that correctness is encoded in a richer state than the one-dimensional probe
+direction captures.
+
+This is not contradictory with patching. Patching replaces an entire activation
+vector from a different computation, moving many coordinated features at once.
+Steering perturbs only one learned classifier normal vector. The former can shift
+the model's evidence for an answer; the latter may miss most of the state needed
+to change either the answer or the model's stated confidence.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.88\linewidth]{fig5_steering_negative.png}
+    \caption{Directional steering is mostly ineffective. A direction can be
+    predictive without being an adequate one-dimensional control knob.}
+    \label{fig:steering}
+\end{figure}
+
+\subsection{Replication Across Models}
+
+The main pattern replicates across model families. Qwen2.5-7B and Llama-3.1-8B
+both show decodable correctness, late-layer causal rescue, and MLP-dominated
+component effects. The exact layer gap varies: Qwen2.5-3B has a large gap between
+probe peak and patching peak, Qwen2.5-7B has almost no gap, and Llama-3.1-8B has a
+small gap.
+
+The replication should be read qualitatively rather than as a claim of identical
+circuits. Architectures, layer counts, and training distributions differ. What is
+stable is the coarse phenomenon: correctness is internally readable, late
+activation patches can move answer evidence, and MLP outputs carry more of the
+measured causal effect than attention outputs.
+
+\begin{table}[t]
+\centering
+\small
+\caption{SimpleQA replication across three instruction-tuned models.}
+\label{tab:multimodel}
+\begin{tabular}{lccccccc}
+\toprule
+Model & Probe L & AUC & Rescue L & Rescue & MLP & Attn & Gap \\
+\midrule
+Qwen2.5-3B & L15 & 0.820 & L35 & 2.76 & 0.970 & 0.205 & +20 \\
+Qwen2.5-7B & L27 & 0.850 & L27 & 5.75 & 3.068 & 0.374 & 0 \\
+Llama-3.1-8B & L28 & 0.771 & L31 & 2.30 & 0.068 & 0.042 & +3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.88\linewidth]{fig_multimodel.png}
+    \caption{Multi-model replication. Correctness is decodable in all three models,
+    and late-layer MLP effects dominate at the causal bottleneck.}
+    \label{fig:multimodel}
+\end{figure}
+
+\section{Discussion}
+
+The results support three claims about internal uncertainty in language models.
+
+First, language models encode internal correctness signals that are not reducible
+to output confidence. Probes often beat token-level confidence baselines, and
+verbalized confidence is consistently weak. Correctness and verbal-confidence
+directions are nearly orthogonal. This suggests that the model's explicit report
+of confidence is not a faithful readout of the same representation that supports
+answer correctness.
+
+Second, decodability and logit-level causality separate. In \qwen{}, correctness
+is most readable around layer 15 for SimpleQA, but causal rescue peaks around
+layer 35. This warns against interpreting a strong probe as a mechanistic
+explanation by itself. A probe can reveal that information is present; it does not
+show where the model uses that information to change its next-token evidence.
+
+Third, logit-level influence and behavioral control also separate. Full activation
+patching reliably moves next-token evidence, especially through late MLP outputs,
+but this influence is usually not enough to flip the final answer. One-dimensional
+steering along the probe direction does not control correctness or verbal
+confidence. The probe likely reads a projection of a richer state rather than the
+complete causal mechanism.
+
+These findings have practical implications for hallucination monitoring. Internal
+probes may be useful detectors, especially when verbal confidence is misleading.
+However, detector directions should not automatically be treated as intervention
+directions. A monitoring system and a control mechanism may require different
+representations, objectives, and levels of granularity.
+
+There are important limitations. Forced-answer prompting creates many confident
+errors, but it is an artificial distribution. Some datasets have small effective
+test sets after abstention filtering, especially greedy TruthfulQA. Cross-dataset
+transfer is partial, so probes learn both general correctness information and
+dataset-specific structure. Cross-question patching can also transfer donor
+content, so we treat it as localization evidence rather than a pure correctness
+intervention. Finally, the main causal metric is a first-token logit-difference
+rescue score, not full answer-level behavioral correction. Future experiments
+should test more natural instruction-following settings, multi-token behavioral
+patching, and subspace-level interventions that preserve more of the activation
+geometry than a single probe direction.
+
+\section{Conclusion}
+
+We investigated whether language models have an internal signal of factual
+correctness and whether that signal is causal. Linear probes reveal strong
+correctness information in residual-stream activations, often outperforming
+confidence baselines and diverging sharply from verbalized confidence. Activation
+patching shows that late-layer MLP states can causally move next-token evidence
+toward the correct answer. But those shifts rarely fix the final answer, and
+simple steering along a learned probe direction fails to control generation or
+confidence. The resulting conclusion is not simply that models ``know'' when they
+are wrong. Rather, models expose correctness information in hidden states; some of
+that information lies on a causal path to answer evidence; and the causal state is
+richer than a one-dimensional linear probe. Internal correctness is readable,
+partly logit-causal, and not straightforwardly behavior-controlling.

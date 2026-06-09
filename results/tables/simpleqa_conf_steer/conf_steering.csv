@@ -1,0 +1,16 @@
+group,direction,alpha,n,flip_rate,hedge_rate,correct_rate,mean_vc_delta,n_vc_measured
+conf_wrong,neg_conf_dir,0.0,50,0.02,0.02,0.0,nan,0
+conf_wrong,neg_conf_dir,2.0,50,0.04,0.02,0.0,7.5,8
+conf_wrong,neg_conf_dir,4.0,50,0.04,0.02,0.0,7.5,8
+conf_wrong,neg_conf_dir,8.0,50,0.06,0.02,0.0,7.5,8
+conf_wrong,neg_conf_dir,16.0,50,0.08,0.02,0.0,7.5,8
+conf_wrong,corr_dir,0.0,50,0.02,0.02,0.0,nan,0
+conf_wrong,corr_dir,2.0,50,0.04,0.02,0.0,7.5,8
+conf_wrong,corr_dir,4.0,50,0.04,0.02,0.0,7.5,8
+conf_wrong,corr_dir,8.0,50,0.08,0.02,0.0,7.5,8
+conf_wrong,corr_dir,16.0,50,0.06,0.02,0.0,7.5,8
+conf_correct,neg_conf_dir,0.0,50,0.0,0.0,1.0,nan,0
+conf_correct,neg_conf_dir,2.0,50,0.02,0.0,0.98,4.375,8
+conf_correct,neg_conf_dir,4.0,50,0.04,0.0,0.96,4.375,8
+conf_correct,neg_conf_dir,8.0,50,0.04,0.0,0.96,4.375,8
+conf_correct,neg_conf_dir,16.0,50,0.0,0.0,1.0,4.375,8

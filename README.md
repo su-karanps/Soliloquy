@@ -63,6 +63,13 @@ soliloquy/
 │   ├── 17_mlp_steer.py           # Exp 7 v2: directional steering at the late-MLP output
 │   ├── 18_decoda_causa_plot.py   # decodability vs causality overlay figure
 │   ├── 19_position_patch.py      # position-specific patching (prompt_last / answer_* positions)
+│   ├── 20_paper_figures.py       # assembles poster-ready figures (Figs 1–6)
+│   ├── 21_probe_failures.py      # qualitative FP/FN analysis with verbal confidence
+│   ├── 22_conf_steer.py          # steer verbal-conf direction at L35 during generation
+│   ├── 23_long_generation.py     # logprob trajectory + hedge detection over 80 tokens
+│   ├── 24_conf_elicit_steer.py   # steer during confidence-elicitation forward pass
+│   ├── 25_joint_verbal_conf.py   # joint answer+confidence single-generation elicitation
+│   ├── 26_patch_flip_rate.py     # full-answer generation after L35 patching, graded
 │   ├── run_all_generation.sh
 │   ├── run_all_analysis.sh
 │   └── run_causal_experiments.sh
@@ -176,21 +183,19 @@ Train two parallel probes at the best (layer, position): one predicting `is_corr
 and one predicting high verbal confidence (≥50). Compute the cosine similarity
 between the two weight directions, cross-prediction AUCs, and quadrant counts.
 
-### New experiments — robustness & replication (scripts 16–19)
+### New experiments — robustness & replication (scripts 16–26)
 
-- **16 — Same-question paired patching**: uses temperature-sampled runs to find
-  (correct, wrong) trajectories from the *same question*, eliminating question-content
-  as a confound. Includes a cross-question control for comparison.
-- **17 — Late-MLP directional steering**: applies the probe direction as a steering
-  vector directly to the MLP output at the causally active late layer (L35 / L27 /
-  L31 depending on model), testing whether 1-D steering at the right component
-  controls generation.
-- **18 — Decodability vs causality figure**: overlays per-layer probe AUC
-  (decodability) and per-layer rescue effect (causality) on dual axes, illustrating
-  the layer gap between where the signal is readable and where it is causally active.
-- **19 — Position-specific patching**: sweeps the patch position across
-  `{prompt_last, answer_first, answer_last, answer_mean}` at a coarse layer grid to
-  identify which token position carries the most causal information.
+- **16 — Same-question paired patching**: uses temperature-sampled runs (8 samples/question) to find (correct, wrong) trajectories from the *same question*. Includes a cross-question control for comparison. See caveats below.
+- **17 — Late-MLP directional steering**: applies the probe direction as a steering vector directly to the MLP output at the causally active late layer (L35), testing whether 1-D steering at the right component controls generation.
+- **18 — Decodability vs causality figure**: overlays per-layer probe AUC (decodability) and per-layer rescue effect (causality) on dual axes, illustrating the layer gap.
+- **19 — Position-specific patching**: sweeps the patch position across `{prompt_last, answer_first, answer_last, answer_mean}`.
+- **20 — Paper figures**: assembles all key figures for presentation; poster-sized fonts.
+- **21 — Probe failure qualitative analysis**: extracts false-positive (probe says correct, model wrong) and false-negative (probe says wrong, model correct) cases with verbal confidence annotation.
+- **22 — Confidence-direction steering**: steers the verbal-confidence probe direction (not the correctness direction) at L35 MLP during answer generation; measures whether stated confidence drops.
+- **23 — Long generation probe**: generates multi-sentence answers and tracks token log-probability over 80 generated tokens, plus hedge-phrase detection.
+- **24 — Confidence elicitation steering**: steers the verbal-confidence direction during the confidence-elicitation forward pass itself (not a separate re-ask), measuring whether the stated number changes.
+- **25 — Joint answer+confidence generation**: elicits answer and confidence number in a single unbroken generation (vs. the standard two-pass design), for direct comparison.
+- **26 — Patching answer flip rate**: generates the full answer after patching at L35 (residual, MLP-only, attention-only) and grades it, reporting actual answer flip rates rather than logit-diff.
 
 ## Headline findings (`results/experiments_summary.md` has full numbers)
 
@@ -198,54 +203,50 @@ between the two weight directions, cross-prediction AUCs, and quadrant counts.
   AUCs (30% qid-disjoint split): PopQA `0.913`, TriviaQA `0.850`, TruthfulQA
   `0.821`, SimpleQA `0.820`, NQ-Open `0.805`. Consistent across three models.
 
-- **The probe beats output-confidence baselines on most datasets.** Verbalized
-  confidence is the worst predictor on every dataset (0.50–0.79 AUC), well below
-  the internal probe.
-
-- **The signal is not just a topic/difficulty detector.** On questions with both
-  correct and incorrect sampled answers, a probe reaches AUC **0.989** discriminating
-  correct vs incorrect *within the same question*, vs 0.724 when questions are disjoint.
-
 - **Decodability precedes causal control by ~20 layers (Qwen-3B).** Probe AUC peaks
-  at L15 (answer_first), but residual patching rescue is near-zero until L22 and
-  peaks at L35. In our interventions, early-layer decodable signals are not sufficient
-  to causally steer generation; late-layer residual/MLP states exert strong control.
+  at L15 (answer_first), but residual patching rescue peaks at L35. Correctness is
+  readable ~20 layers before it becomes causally active — more than half the network
+  sits between where the signal is decodable and where it is used.
 
 - **MLP > attention for causal control, consistently.** At the peak rescue layer,
   MLP rescue exceeds attention rescue on every model and dataset: 4.7× (Qwen-3B
-  SimpleQA), 8.2× (Qwen-7B SimpleQA), and consistently MLP-dominant across all five
-  3B datasets (triviaqa, nq_open, popqa, truthfulqa).
+  SimpleQA), 8.2× (Qwen-7B SimpleQA), across all five 3B datasets, and across
+  TriviaQA, NQ-Open, PopQA, TruthfulQA.
 
-- **Same-question patching confirms the causal signal.** Patching within question
-  pairs (same qid, different sampled trajectories) shows the same late-layer peak
-  (L35) as cross-question patching, ruling out question-content injection as an
-  explanation.
+- **Rescue effect is real in logit-diff but rarely flips answers.** Full residual
+  patching at L35 shifts the correct token's logit by +2.76 but produces 0% actual
+  answer flips (0/60 examples). MLP-only patching gives 5% flip rate. The model is
+  highly committed to wrong answers; patching shifts the distribution without
+  crossing the argmax threshold.
 
-- **Prompt_last position carries the strongest causal signal.** Position-specific
-  patching shows `prompt_last` (the last token before generation begins) gives the
-  highest rescue effect (+3.74) and peaks at L35 — the model's answer-selection state
-  is substantially determined before the first answer token is generated.
+- **Probe-direction steering does not control generation.** Neither prompt-level nor
+  late-MLP steering at L35 changes correct rate meaningfully. The verbal-confidence
+  direction is also unresponsive (steering during the confidence-elicitation pass
+  produces a ceiling effect: the model outputs ~100 regardless). The causal pathway
+  is not accessible via any single linear direction.
 
-- **Probe-direction steering does not control generation — at any layer or component.**
-  Neither prompt-level steering (script 12) nor late-MLP steering at L35 (script 17)
-  produces meaningful correctness improvements. A 1-D linear direction, even at the
-  causally active layer, is not a sufficient control knob. The causal effect requires
-  full multi-dimensional residual patching.
+- **Self-consistency provides zero benefit on SimpleQA.** Majority vote across 8
+  sampled answers gives 8.0% accuracy vs 8.5% greedy — no improvement. 78.5% of
+  questions are never answered correctly across all 8 samples. Errors are committed
+  hallucinations, not random noise.
 
-- **Causal late-layer MLP pattern transfers across datasets.** All five Qwen-3B
-  datasets show peak rescue in L32–L35 and MLP dominance, ruling out a SimpleQA-
-  specific artifact.
+- **Correctness and verbal confidence are nearly orthogonal in all models.**
+  cos(correctness\_dir, verbal\_conf\_dir) = 0.07 (Qwen-3B), 0.04 (Qwen-7B), 0.02
+  (Llama-8B). The dissociation is most extreme on SimpleQA (hard factual recall
+  under forced-answer prompting); on TriviaQA and PopQA the incorrect+confident rate
+  is lower (31% and 21%).
+
+- **Verbalized confidence is degenerate as an elicited scalar.** Under both
+  separate-pass and joint (single-generation) elicitation, the model outputs near-100
+  confidence for confidently-wrong examples. Joint elicitation is *worse*: 96%
+  high-confidence responses vs 63.5% in separate-pass, with only 17% answer
+  agreement between formats. The model's verbal confidence number is essentially a
+  linguistic reflex, not a calibrated readout.
 
 - **Pattern replicates across model families.** Qwen-7B: probe L27 / rescue L27 /
   MLP 8.2×. Llama-3.1-8B: probe L28 / rescue L31 / MLP 1.6×. Late-layer, MLP-
-  dominated causal bottleneck is consistent, though the decodability–causality gap
-  shrinks in larger models.
-
-- **Correctness and verbal confidence are nearly orthogonal directions in all models.**
-  cos(correctness\_dir, verbal\_conf\_dir) = 0.07 (Qwen-3B), 0.04 (Qwen-7B), 0.02
-  (Llama-8B). Under forced-answer prompting on SimpleQA, ~61–85% of responses
-  (model-dependent) are incorrect-but-verbally-confident; this is a prompting/
-  distribution result, not a universal claim.
+  dominated causal bottleneck holds, though the decodability–causality gap shrinks
+  in larger models.
 
 ## Notes & caveats
 
@@ -255,12 +256,23 @@ between the two weight directions, cross-prediction AUCs, and quadrant counts.
   within-qid splits to isolate topic/difficulty effects.
 - Grading is rule-based; for short-form QA this matches TriviaQA/PopQA conventions.
   An LLM-judge grader can be plugged into `src.grading` for future work.
-- The cross-question patching injects correct-question hidden states at `prompt_last`,
-  which could mix question content with correctness signal. Script 16 addresses this
-  with same-question paired patching and confirms the late-layer pattern holds.
+- **Cross-question patching caveat**: injecting hidden states from a different
+  question at `prompt_last` conflates correctness signal with topic/answer content
+  from the donor. Same-question patching (script 16) addresses this but has limited
+  power (n=25 pairs, SEM≈1.85). The same-question rescue effect at L35 is 0.47 vs
+  7.68 for cross-question — this gap is large and interpretively important: much of
+  the cross-question rescue may be content injection rather than a pure correctness
+  signal. We report both but treat the cross-question logit-diff curves as the
+  primary decodability/localization signal rather than a clean causal claim.
+- **Logit-diff vs flip rate**: the rescue effect is measured in Δlogit-diff, which
+  does not require crossing the argmax threshold. Actual answer flip rates at L35
+  are 0% (full residual) and 5% (MLP-only). Logit-diff captures causal influence
+  on the output distribution; flip rate is a stricter test that the model largely passes.
 - MLP directional steering null result (script 17) should be qualified: the probe
   direction is 1-D; the causal effect likely requires higher-dimensional intervention.
-  Full patching remains the cleanest test.
+- Verbalized confidence steering experiments (scripts 22, 24) are limited by a
+  ceiling effect: the model defaults to ~100 confidence for any answer it committed
+  to, regardless of steering direction or magnitude.
 
 ## Why the name
 
