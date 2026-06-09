@@ -56,7 +56,6 @@ outside the repository under `/hai/scratch/karanps/CS221M/`.
 │   ├── 17_mlp_steer.py
 │   ├── 18_decoda_causa_plot.py
 │   ├── 19_position_patch.py
-│   ├── 20_paper_figures.py
 │   ├── 21_probe_failures.py
 │   ├── 22_conf_steer.py
 │   ├── 23_long_generation.py
@@ -71,15 +70,6 @@ outside the repository under `/hai/scratch/karanps/CS221M/`.
 │   ├── experiments_summary.md
 │   ├── plots/
 │   └── tables/
-└── paper/
-    ├── main.tex
-    ├── figures/
-    ├── references.bib
-    ├── scripts/
-    ├── package.json
-    ├── package-lock.json
-    ├── Makefile
-    └── README.md
 ```
 
 ## Setup
@@ -116,7 +106,6 @@ Useful individual entry points:
 - `scripts/04_verbal_confidence.py`: collect verbalized confidence scores.
 - `scripts/06_transfer.py`: evaluate cross-dataset probe transfer.
 - `scripts/14_patch_residual.py`: run residual-stream rescue/corruption patching.
-- `scripts/20_paper_figures.py`: assemble the figures used by the paper.
 - `scripts/08_summary.py`: refresh `results/experiments_summary.*`.
 
 ## Stored Generation Fields
@@ -164,16 +153,3 @@ pattern is:
   flips remain rare.
 - One-dimensional steering along a probe direction does not reliably control
   correctness or verbal confidence.
-
-## Paper
-
-The paper source lives in `paper/`. `paper/main.tex` is the canonical LaTeX entry
-point and uses figures from `paper/figures/`. To refresh those figure copies from
-the tracked result plots:
-
-```bash
-cd paper
-make figures
-```
-
-See `paper/README.md` for Overleaf-related commands.
