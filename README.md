@@ -1,24 +1,14 @@
 # Soliloquy
 
-Soliloquy is an experimental scaffold for studying whether language models encode
-an internal signal of factual correctness that is separable from output confidence.
-The code generates short-form QA answers, records residual-stream activations,
-trains linear probes for answer correctness, compares them against confidence
-baselines, and runs causal interventions such as activation patching and steering.
+Soliloquy is an experimental scaffold for studying whether language models encode an internal signal of factual correctness that is separable from output confidence. The code generates short-form QA answers, records residual-stream activations, trains linear probes for answer correctness, compares them against confidence baselines, and runs causal interventions such as activation patching and steering.
 
 The current experiments focus on:
 
 - Primary model: `Qwen/Qwen2.5-3B-Instruct`.
-- Replication models: `Qwen/Qwen2.5-7B-Instruct` and
-  `meta-llama/Llama-3.1-8B-Instruct`.
+- Replication models: `Qwen/Qwen2.5-7B-Instruct` and `meta-llama/Llama-3.1-8B-Instruct`.
 - Datasets: SimpleQA, TriviaQA, NQ-Open, PopQA, and TruthfulQA-generation.
-- Main prompt regime: forced-answer prompting, with retained greedy runs for
-  comparison where available.
-- Tracked outputs: compact CSV, JSON, Markdown, and PNG artifacts under
-  `results/`.
-
-Raw generations, hidden states, probe checkpoints, and logs are expected to live
-outside the repository under `/hai/scratch/karanps/CS221M/`.
+- Main prompt regime: forced-answer prompting, with retained greedy runs for comparison where available.
+- Tracked outputs: compact CSV, JSON, Markdown, and PNG artifacts under `results/`.
 
 ## Repository Layout
 
@@ -79,10 +69,7 @@ export HF_HOME=/hai/scratch/karanps/hf/
 pip install -r requirements.txt
 ```
 
-The generation and causal scripts assume access to the configured Hugging Face
-models and enough GPU memory for the selected model. The primary Qwen2.5-3B runs
-were developed for a single H100 80 GB. Probe and plotting stages are mostly CPU
-bound once hidden states have been collected.
+The generation and causal scripts assume access to the configured Hugging Face models and enough GPU memory for the selected model. The primary Qwen2.5-3B runs were developed for a single H100 80 GB. Probe and plotting stages are mostly CPU bound once hidden states have been collected.
 
 ## Reproduction
 
@@ -94,9 +81,7 @@ bash scripts/run_all_analysis.sh
 bash scripts/run_causal_experiments.sh
 ```
 
-The generation script writes raw answers and hidden states under
-`/hai/scratch/karanps/CS221M/generations/`. The analysis scripts write tracked
-summaries and figures under `results/`.
+The generation script writes raw answers and hidden states under `generations/`. The analysis scripts write tracked summaries and figures under `results/`.
 
 Useful individual entry points:
 
@@ -118,8 +103,7 @@ Each generated example records:
 - `hidden_states_path`, pointing to a tensor bundle with
   `prompt_last`, `answer_first`, `answer_last`, and `answer_mean` states.
 
-`scripts/02_grade.py` adds correctness labels and abstention metadata. Verbalized
-confidence is stored separately by `scripts/04_verbal_confidence.py`.
+`scripts/02_grade.py` adds correctness labels and abstention metadata. Verbalized confidence is stored separately by `scripts/04_verbal_confidence.py`.
 
 ## Experiments
 
@@ -129,8 +113,7 @@ The repository implements the following experiment families:
 - Layer-by-position linear probes for answer correctness.
 - Within-question paired controls for sampled SimpleQA generations.
 - Cross-dataset transfer of learned correctness probes.
-- Probe comparisons against log-probability, entropy, margin, self-consistency,
-  and verbalized-confidence baselines.
+- Probe comparisons against log-probability, entropy, margin, self-consistency, and verbalized-confidence baselines.
 - Residual-stream rescue and corruption patching.
 - Component, head, and token-position localization.
 - Logit-lens analysis across layers.
@@ -143,13 +126,8 @@ The repository implements the following experiment families:
 See `results/experiments_summary.md` for the detailed tracked report. The headline
 pattern is:
 
-- Correctness is linearly decodable from residual-stream activations on all tested
-  datasets.
-- Verbalized confidence is a weak correctness predictor, especially under
-  forced-answer prompting.
-- Decodability and causal influence separate: mid-layer probes can be predictive
-  while late-layer MLP activations dominate patching effects.
-- Patching can move next-token evidence toward the correct answer, but full-answer
-  flips remain rare.
-- One-dimensional steering along a probe direction does not reliably control
-  correctness or verbal confidence.
+- Correctness is linearly decodable from residual-stream activations on all tested datasets.
+- Verbalized confidence is a weak correctness predictor, especially under forced-answer prompting.
+- Decodability and causal influence separate: mid-layer probes can be predictive while late-layer MLP activations dominate patching effects.
+- Patching can move next-token evidence toward the correct answer, but full-answer flips remain rare.
+- One-dimensional steering along a probe direction does not reliably control correctness or verbal confidence.
